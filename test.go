@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-     for i := range{
+     for i := range x {
        i = 1+2*3-4/5
      }
 }

@@ -6,6 +6,7 @@
 %define parse.error verbose
 /* %define api.value.prefix {T_} */
 %start SourceFile
+/* %expect 11 */
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -67,6 +68,11 @@
 %token O_AMPXOR
 %token O_AMPXOREQ
 
+%token P_TYPE
+%token P_CONST
+%token P_NIL
+%token P_FUNC
+
 %precedence EMPTY
 %precedence NORMAL
 %left O_LOR
@@ -74,7 +80,17 @@
 %left O_EQ O_NEQ O_LT O_LEQ O_GT O_GEQ
 %left '+' '-' '|' '^'
 %left '*' '/' '%' O_LSHIFT O_RSHIFT '&' O_AMPXOR
+%nonassoc O_CHAN_DIR
 %right P_UNARY
+
+%left   NotPackage
+%left   K_PACKAGE
+
+%left   NotParen
+%left   '('
+
+%left   ')'
+%left   PreferToRightParen
 
 %%
 
@@ -129,19 +145,19 @@ Type :
 ;
 
 TypeName :
-				 T_ID
+				 P_TYPE
 				 | QualifiedID
 ;
-
+/*  */
 TypeLiteral :
 						ArrayType 
 						| StructType 
 						| PointerType 
-						| FunctionType 
-						| InterfaceType 
-						| SliceType 
-						| MapType 
-						| ChannelType
+/* 						| FunctionType  */
+/* 						| InterfaceType  */
+/* 						| SliceType  */
+/* 						| MapType  */
+/* 						| ChannelType */
 ;
 
 QualifiedID :
@@ -158,27 +174,27 @@ ElementType :
 						Type
 ;
 
-SliceType :
-					'[' ']' ElementType
-;
-
-MapType     :
-						K_MAP '[' KeyType ']' ElementType
-;
-KeyType     :
-						Type
-;
-
-ChannelType :
-						ChanDirection ElementType
-;
-ChanDirection :
-							K_CHAN 
-							| K_CHAN O_CHAN_DIR
-							| O_CHAN_DIR K_CHAN
-
-;
-
+/* SliceType : */
+/* 					'[' ']' ElementType */
+/* ; */
+/*  */
+/* MapType     : */
+/* 						K_MAP '[' KeyType ']' ElementType */
+/* ; */
+/* KeyType     : */
+/* 						Type */
+/* ; */
+/*  */
+/* ChannelType : */
+/* 						ChanDirection ElementType */
+/* ; */
+/* ChanDirection : */
+/* 							K_CHAN  */
+/* 							| K_CHAN O_CHAN_DIR */
+/* 							| O_CHAN_DIR K_CHAN */
+/*  */
+/* ; */
+/*  */
 StructType    :
 							K_STRUCT '{' FieldDecls '}'
 ;
@@ -209,9 +225,9 @@ PointerType :
 						'*' Type
 ;
 
-FunctionType   :
-							 K_FUNC Signature
-;
+/* FunctionType   : */
+/* 							 K_FUNC Signature */
+/* ; */
 Signature      :
 							 Parameters SignatureSuff
 ;
@@ -230,42 +246,42 @@ ParameterList  :
 							 | %empty
 ;
 ParameterList2 :
-							 ParameterDecl ',' ParameterList2 %prec NORMAL
+							 ParameterList2 ',' ParameterDecl %prec NORMAL
 							 | %empty %prec EMPTY
 ;
 ParameterDecl  :
 							 ParameterDeclPre Type
 ;
 ParameterDeclPre :
-								 IdentifierList IdentifierListSuff %prec NORMAL
+								 IdentifierList PIdentifierListSuff %prec NORMAL
 								 | O_ELLIPSES %prec NORMAL
 								 | %empty %prec EMPTY
 ;
-IdentifierListSuff :
+PIdentifierListSuff :
 									 O_ELLIPSES %prec NORMAL
 									 | %empty %prec EMPTY
 ;
 
-InterfaceType      :
-									 K_INTERFACE '{' InterfaceTypeList '}'
-;
-InterfaceTypeList  :
-									 InterfaceTypes InterfaceTypeList %prec NORMAL
-									 | %empty %prec EMPTY
-;
-InterfaceTypes     :
-									 MethodSpec
-									 | InterfaceTypeName
-;
-MethodSpec         :
-									 MethodName Signature
-;
+/* InterfaceType      : */
+/* 									 K_INTERFACE '{' InterfaceTypeList '}' */
+/* ; */
+/* InterfaceTypeList  : */
+/* 									 InterfaceTypes InterfaceTypeList %prec NORMAL */
+/* 									 | %empty %prec EMPTY */
+/* ; */
+/* InterfaceTypes     : */
+/* 									 MethodSpec */
+/* 									 | InterfaceTypeName */
+/* ; */
+/* MethodSpec         : */
+/* 									 MethodName Signature */
+/* ; */
 MethodName         :
 									 T_ID
 ;
-InterfaceTypeName  :
-									 TypeName
-;
+/* InterfaceTypeName  : */
+/* 									 TypeName */
+/* ; */
 
 
 /* Declarations */
@@ -292,7 +308,7 @@ FunctionName :
 ;
 FunctionBody :
 						 Block
-						 /* | %empty */
+						 | %empty
 ;
 
 MethodDecl :
@@ -304,8 +320,10 @@ Receiver   :
 
 ConstDecl :
 					K_CONST ConstSpec
-					| K_CONST '(' ConstSpec ')'
-
+					| K_CONST '(' ConstSpecs ')'
+;
+ConstSpecs : ConstSpec
+					 | ConstSpecs ConstSpec
 ;
 ConstSpec :
 					IdentifierList CIdentifierListSuff
@@ -342,17 +360,20 @@ TypeDef :
 
 VarDecl :
 				K_VAR VarSpec
-				| K_VAR '(' VarSpec ')'
+				| K_VAR '(' VarSpecs ')'
+;
+VarSpecs : VarSpec
+				 | VarSpecs VarSpec
 ;
 VarSpec :
-				IdentifierList IdentifierListSuff
+				IdentifierList VIdentifierListSuff
 ;
-IdentifierListSuff :
-									 Type IdentifierListTypeSuff %prec NORMAL
+VIdentifierListSuff :
+									 Type VIdentifierListTypeSuff %prec NORMAL
 									 | '=' ExprList %prec NORMAL
 									 | %empty %prec EMPTY
 ;
-IdentifierListTypeSuff :
+VIdentifierListTypeSuff :
 											 '=' ExprList %prec NORMAL
 											 | %empty %prec EMPTY
 ;
@@ -412,7 +433,7 @@ unary_op   :
 					 | '^' 
 					 | '*' 
 					 | '&' 
-					 | O_CHAN_DIR
+					 /* | O_CHAN_DIR */
 ;
 assign_op  :
 					 '='
@@ -429,50 +450,30 @@ assign_op  :
 					 | O_AMPXOREQ
 ;
 
-/* Expr : */
-/* 		 Expr O_LOR Land %prec P_LOR */
-/* 		 | Land */
-/* ; */
-/* Land : */
-/* 		 Land O_LAND Lcomp %prec P_LAND */
-/* 		 | Lcomp */
-/* ; */
-/* Lcomp : */
-/* 			Lcomp rel_op Sum %prec P_REL */
-/* 			| Sum */
-/* ; */
-/* Sum  : */
-/* 		 Sum add_op Prod %prec P_SUM */
-/* 		 | Prod */
-/* ; */
-/* Prod : */
-/* 		 Prod mul_op UnaryExpr %prec P_PROD */
-/* 		 | UnaryExpr */
-/* ; */
 Expr :
 		 Expr O_LOR Expr
 		 | Expr O_LAND Expr
-		 | Expr rel_op Expr
-		 | Expr add_op Expr
-		 | Expr mul_op Expr
+		 | Expr rel_op Expr %prec O_EQ
+		 | Expr add_op Expr %prec '+'
+		 | Expr mul_op Expr %prec '-'
 		 | UnaryExpr %prec P_UNARY
 ;
 UnaryExpr :
-					unary_op UnaryExpr %prec P_UNARY
+					O_CHAN_DIR UnaryExpr
+					| unary_op UnaryExpr %prec P_UNARY
 					| PrimaryExpr
 ;
 PrimaryExpr :
 						Operand
 						/* | PrimaryExpr Selector */
 						| PrimaryExpr Index 
-;
 /* | PrimaryExpr Slice  */
 						/* | PrimaryExpr TypeAssertion  */
-						/* | PrimaryExpr Arguments 
-; */
-/* Selector       :
- '.' T_ID
-; */
+						| PrimaryExpr Arguments 
+;
+/* Selector       : */
+/*  '.' T_ID */
+/* ; */
 Index          :
 							 '[' Expr ']'
 ;
@@ -482,13 +483,30 @@ Index          :
 	"[" [ Expression ] ":" Expression ":" Expression "]" . */
 /* TypeAssertion  :
  "." "(" Type ")" . */
-/* Arguments      :
- "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ O_ELLIPSES ] [ "," ] ] ")" . */
+Arguments      :
+							 '(' Args2 ArgsOp1 ArgsOp2 ')' 
+;
+Args2 :
+			ExprList
+			| Type
+			| Type ',' ExprList
+			| %empty
+;
+ArgsOp1 : 
+				O_ELLIPSES
+				| %empty
+;
+ArgsOp2 : 
+				','
+				| %empty
+;
 
 Operand     :
 						Literal 
 						| OperandName 
 						| '(' Expr ')'
+						| P_NIL
+						| P_CONST
 ;
 Literal     :
 						BasicLit 
@@ -507,6 +525,7 @@ FunctionLit :
 ;
 OperandName :
 						T_ID
+						| P_FUNC
 						| QualifiedID
 ;
 
@@ -515,7 +534,7 @@ Block :
 			'{' StatementList '}'
 ;
 StatementList :
-							Statement StatementList %prec NORMAL
+							StatementList Statement %prec NORMAL
 							| %empty %prec EMPTY
 ;
 
@@ -523,28 +542,29 @@ StatementList :
 Statement :
 					SimpleStmt
 					| ForStmt
-					| FunctionCall
+					| IfStmt
+					| ReturnStmt
 ;
 SimpleStmt :
 					ExprStmt 
-					| SendStmt 
+					/* | SendStmt  */
 					| IncDecStmt 
 					| Assignment 
 					| ShortVarDecl
 					/* | EmptyStmt  */
 ;
 
-EmptyStmt :
-					%empty %prec EMPTY
-;
+/* EmptyStmt : */
+/* 					%empty %prec EMPTY */
+/* ; */
 
 ExprStmt :
 				 Expr
 ;
 
-SendStmt :
-				 Channel O_CHAN_DIR Expr
-;
+/* SendStmt : */
+/* 				 Channel O_CHAN_DIR Expr */
+/* ; */
 Channel :
 				Expr
 ;
@@ -603,12 +623,22 @@ OptionalForRangePre :
 										| %empty %prec EMPTY
 ;
 
-FunctionCall : 
-						 FunctionCallName Parameters
+IfStmt : 
+			 K_IF /* OptionalStmt */ Expr Block OptionalElse
 ;
-FunctionCallName :
-								 FunctionName
-								 | QualifiedID
+/* OptionalStmt :  */
+/* 						 SimpleStmt ';' */
+/* 						 | %empty */
+/* ; */
+OptionalElse :
+						 K_ELSE IfStmt
+						 | K_ELSE Block
+						 | %empty
+;
+
+ReturnStmt :
+					 K_RETURN 
+					 | K_RETURN ExprList
 ;
 
 %%

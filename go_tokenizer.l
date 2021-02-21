@@ -52,7 +52,7 @@ operator_dec "--"
 operator_ellipses "..."
 operator_ampxor "&^"
 operator_ampxoreq "&^="
-operator_char "+"|"&"|"("|")"|"-"|"|"|"["|"]"|"^"|":"|"."|"{"|"}"|"/"|"="|","|";"|"%"|"!"
+operator_char "+"|"&"|"("|")"|"-"|"|"|"["|"]"|"^"|":"|"."|"{"|"}"|"/"|"*"|"="|","|";"|"%"|"!"
 
 /* Integer literals */
 int_lit     {decimal_lit}|{binary_lit}|{octal_lit}|{hex_lit}
@@ -84,8 +84,11 @@ escaped_char     \\[abfnrtv\\\'\"]
 
 /* String literals */
 string_lit             {raw_string_lit}|{interpreted_string_lit}
-raw_string_lit         \`({unicode_char}|{newline})*\`
-interpreted_string_lit \"({unicode_value}|{byte_value})*\"
+unicode_char_noquote   [^\"]
+unicode_char_notick    [^\`]
+unicode_value_noquote  {unicode_char_noquote}|{little_u_value}|{big_u_value}|escaped_char
+raw_string_lit         \`({unicode_char_notick}|{newline})*\`
+interpreted_string_lit \"({unicode_value_noquote}|{byte_value})*\"
 
 /* Keywords */
 keyword_break       break
@@ -114,6 +117,17 @@ keyword_import      import
 keyword_return      return
 keyword_var         var
 
+/* Predeclared types */
+predeclared_type bool|byte|complex64|complex128|error|float32|float64|int|int8|int16|int32|int64|rune|string|uint|uint8|uint16|uint32|uint64|uintptr
+
+/* Predeclared constants */
+predeclared_const true|false|iota
+
+/* Zero value */
+predeclared_zero nil
+
+/* Predeclared functions */
+predeclared_functions append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover
 /* Comments */
 comment       {line_comment}|{block_comment}
 line_comment  "//".*
@@ -176,6 +190,10 @@ block_comment "/*"[^*]*"*"+([^*/][^*]*"*"+)*"/"
 {keyword_import} {return K_IMPORT;}
 {keyword_return} {return K_RETURN;}
 {keyword_var} {return K_VAR;}
+{predeclared_type} return P_TYPE;
+{predeclared_const} return P_CONST;
+{predeclared_zero} return P_NIL;
+{predeclared_functions} return P_FUNC;
 {identifier} {yylval.T_ID = yytext; return T_ID;}
 {int_lit} {yylval.L_INT = atoi(yytext); return L_INT;}
 {float_lit} {yylval.L_FLOAT = atof(yytext); return L_FLOAT;}
