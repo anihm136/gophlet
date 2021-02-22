@@ -642,8 +642,10 @@ ReturnStmt :
 ;
 
 %%
+extern int yylineno;
+
 void yyerror(char const* error) {
-	fprintf(stderr, "%s\n", error)
+	fprintf(stderr, "%d: %s\n", yylineno, error)
 ;
 }
 

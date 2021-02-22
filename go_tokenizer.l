@@ -1,6 +1,8 @@
 %{
 #include "common.h"
 %}
+
+%option yylineno
 /* Characters */
 letter        [a-zA-Z]|_
 decimal_digit [0-9]

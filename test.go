@@ -25,5 +25,7 @@ import (
 func main() {
      for i := range x {
        i = 1+2*3-4/5
+       j := 5.6
+       k = i * j
      }
 }
