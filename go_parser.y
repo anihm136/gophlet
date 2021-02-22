@@ -436,8 +436,7 @@ unary_op   :
 					 /* | O_CHAN_DIR */
 ;
 assign_op  :
-					 '='
-					 | O_ADDEQ
+					 O_ADDEQ
 					 | O_SUBEQ
 					 | O_OREQ
 					 | O_XOREQ
@@ -575,7 +574,8 @@ IncDecStmt :
 ;
 
 Assignment :
-					 ExprList assign_op ExprList
+					 ExprList '=' ExprList
+					 | Expr assign_op Expr
 ;
 
 ShortVarDecl :
