@@ -18,14 +18,14 @@ typedef struct symbol_table {
  ST hashTable[10009];
 
 struct stack {
-   int *s;
+   char s[25][25];
    int top;
 } ;
 typedef struct stack stack;
 stack stack_i;
-strack_i.s = create(20);
+//strack_i.s = create(20);
 stack stack_v;
-strack_v.s = create(20);
+//strack_v.s = create(20);
 stack_i.top = -1;
 satck_v.top = -1;
 %}
@@ -729,10 +729,10 @@ int stfull(stack st,int size)
       return 0;
 }
 
-void push(stack *p_st,int item) 
+void push(stack *p_st,char *item) 
 {
    p_st->top++;
-   p_st->s[p_st->top] = item;
+   strcpy(p_st->s[p_st->top], item);
 }
 
 int stempty(stack st) {
@@ -742,8 +742,8 @@ int stempty(stack st) {
       return 0;
 }
 
-int pop(stack *p_st) {
-   int item;
+char * pop(stack *p_st) {
+   char *item;
    item = p_st->s[p_st->top];
    p_st->top--;
    return (item);
