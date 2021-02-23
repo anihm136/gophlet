@@ -1,5 +1,32 @@
 %{
 #include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int dec = 0;
+int TABLE_SIZE = 10009;
+
+typedef struct symbol_table {
+    char name[31];
+    char type[10];
+    char value[10];
+    int addr;
+    int hcode;
+  }ST;
+  
+ ST hashTable[10009];
+
+struct stack {
+   int *s;
+   int top;
+} ;
+typedef struct stack stack;
+stack stack_i;
+strack_i.s = create(20);
+stack stack_v;
+strack_v.s = create(20);
+
 %}
 
 %define api.value.type union
@@ -655,6 +682,132 @@ yydebug = 1
 ;
 yyparse()
 ;
+int* create(int size)
+{
+ return(malloc(sizeof(int)*size));
+}
+
+int stfull(stack st,int size) 
+{
+   if (st.top >= size - 1)
+      return 1;
+   else
+      return 0;
+}
+
+void push(stack *p_st,int item) 
+{
+   p_st->top++;
+   p_st->s[p_st->top] = item;
+}
+
+int stempty(stack st) {
+   if (st.top == -1)
+      return 1;
+   else
+      return 0;
+}
+
+int pop(stack *p_st) {
+   int item;
+   item = p_st->s[p_st->top];
+   p_st->top--;
+   return (item);
+}
+
+void insert(char *token, char *type, char *value) {
+
+    if (check(token) != 1) {
+        printf("Error: %s is redeclared..!\n");
+        exit(0);
+        return;
+    }
+    int index = hash1(token); 
+
+    if (hashTable[index].hcode != -1) { 
+
+        int i = 1; 
+        while (true) { 
+            int newIndex = ( index + i ) % TABLE_SIZE; 
+
+            if (hashTable[newIndex].hcode == -1) { 
+	    	strcpy(hashTable[newIndex].name, token);
+		strcpy(hashTable[newIndex].type, type);
+		strcpy(hashTable[newIndex].value, value);
+                hashTable[newIndex].hcode = 1;
+                break; 
+            } 
+            i++; 
+        } 
+    }
+    
+    else {
+        strcpy(hashTable[index].name, token);
+	strcpy(hashTable[index].type, type);
+	strcpy(hashTable[newIndex].value, value);
+	hashTable[newIndex].hcode = 1;
+    }
+
+}
+
+void search(char *token) {
+
+    int index1 = hash1(key); 
+    int i = 0;
+    while ( i < TABLE_SIZE && hashTable[( index1 + i ) % TABLE_SIZE].name != token )
+        i++;
+
+    if ( i == TABLE_SIZE ) {
+        printf("Error: %s is not defined\n", token);
+        exit(0);
+    }
+    else
+        return ;
+}
+
+int check(char *token) {
+    
+    int index1 = hash1(key); 
+    int i = 0;
+    while ( i < TABLE_SIZE && hashTable[( index1 + i ) % TABLE_SIZE].name != token )
+        i++;
+
+    if ( i == TABLE_SIZE )
+        return 1;
+    else
+        return index1 + i;
+
+}
+
+
+void update(char *token, char *value) {
+
+    int index = check(token);
+    if ( index == 1 ) {
+        printf("Error: %s is not defined\n", token);
+        exit(0);
+        return;
+    }
+
+    else {
+	strcpy(hashTable[newIndex].value, value);
+    }
+
+
+}
+
+int hash1(char *token) {
+    
+    int hash = 0;
+    for (i = 0; token['i'] != '\0'; i++) 
+    { 
+        hash = ( 256 * hash + token[i] ) % 1000000009; 
+    }
+
+    hash = hash % TABLE_SIZE;
+    return hash;
+
+}
 return 0
 ;
 }
