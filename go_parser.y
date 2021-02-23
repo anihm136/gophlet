@@ -402,9 +402,7 @@ VIdentifierListSuff :
 											 			printf("Error");
 													else {
 											 			while(!stempty(stack_i)) {
-											 				$2 = pop(&stack_i);
-															$1 = pop(&stack_v);
-															update($2, "NULL", $1);
+															update(pop(&stack_i), "NULL", pop(&stack_v)); 
 														}
 														dec = 0;
 														}}
@@ -415,15 +413,13 @@ VIdentifierListTypeSuff :
 											 				printf("Error");
 														     else {
 											 				while(!stempty(stack_i)) {
-											 					$2 = pop(&stack_i);
-																$1 = pop(&stack_v);
-																update($2, $$, $1);
+															update(pop(&stack_i), "NULL", pop(&stack_v));
+															
 														}
 														dec = 0;
 														}}
 											 | %empty %prec EMPTY {while(!stempty(stack_i)) {
-											 				$2 = pop(&stack_i);
-															update($2, $$, "NULL");
+															update( pop(&stack_i), $$, "NULL");
 															}
 															dec = 0;}
 ;
@@ -432,19 +428,19 @@ IdentifierList :
 							 T_ID IdentifierList2 
 								{
 								if(dec==1) {
-												insert($1,"NULL","NULL"); 
-											push(&stack_i, $1);
+												insert(yyval(T_ID),"NULL","NULL"); 
+											push(&stack_i, yyval(T_ID));
 								}	else {
-											search($3);
+											search(yyval(T_ID));
 								}
 								}
 ;
 IdentifierList2 :
 								IdentifierList2 ',' T_ID %prec NORMAL {if(dec==1) {
-							 				insert($3,"NULL","NULL"); 
-											push(&stack_i, $1);}
+							 				insert(yyval(T_ID),"NULL","NULL"); 
+											push(&stack_i, yyval(T_ID));}
 										else{
-											search($3);}
+											search(yyval(T_ID));}
 											}
 								| %empty %prec EMPTY 
 ;
