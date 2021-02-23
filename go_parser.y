@@ -397,8 +397,13 @@ VarSpec :
 				IdentifierList VIdentifierListSuff
 ;
 VIdentifierListSuff :
-									 Type VIdentifierListTypeSuff %prec NORMAL {$2 = $1}
-									 | '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
+							Type VIdentifierListTypeSuff %prec NORMAL { if(stempty(stack_v)) {
+													while(!stempty(stack_i)) {
+														update( pop(&stack_i), $$, "NULL");}
+													dec = 0;
+													}
+												}
+							| '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
 											 			printf("Error");
 													else {
 											 			while(!stempty(stack_i)) {
@@ -418,30 +423,27 @@ VIdentifierListTypeSuff :
 														}
 														dec = 0;
 														}}
-											 | %empty %prec EMPTY {while(!stempty(stack_i)) {
-															update( pop(&stack_i), $$, "NULL");
-															}
-															dec = 0;}
+											 | %empty %prec EMPTY 
 ;
 
 IdentifierList :
 							 T_ID IdentifierList2 
 								{
 								if(dec==1) {
-												insert(yyval(T_ID),"NULL","NULL"); 
-											push(&stack_i, yyval(T_ID));
-								}	else {
-											search(yyval(T_ID));
+									insert(yyval.T_ID,"NULL","NULL"); 
+									push(&stack_i, yyval.T_ID);
+								}else {
+										search(yyval.T_ID);
 								}
 								}
 ;
 IdentifierList2 :
-								IdentifierList2 ',' T_ID %prec NORMAL {if(dec==1) {
-							 				insert(yyval(T_ID),"NULL","NULL"); 
-											push(&stack_i, yyval(T_ID));}
-										else{
-											search(yyval(T_ID));}
-											}
+								IdentifierList2 ',' T_ID %prec NORMAL { if(dec==1) {
+							 							insert(yyval.T_ID,"NULL","NULL"); 
+														push(&stack_i, yyval.T_ID);}
+													else{
+														search(yyval.T_ID);}
+													}
 								| %empty %prec EMPTY 
 ;
 
@@ -713,10 +715,13 @@ void yyerror(char const* error) {
 
 int main()
 {
-yydebug = 1
-;
-yyparse()
-;
+	yydebug = 1;
+	yyparse();
+	printf("-------------SYMBOL TABLE-----------------");
+	disp_symtbl();
+	return 0;
+}
+
 int* create(int size)
 {
  return(malloc(sizeof(int)*size));
@@ -832,6 +837,17 @@ void update(char *token, char *type, char *value) {
 
 }
 
+void disp_symtbl() {
+	int base = 1000;
+	printf("%s\t\t%s\t\t%s\t\t%s","Name", "Type", "Value", "addr");
+
+	for(int i=0; i<TABLE_SIZE; i++) {
+		printf("%s\t\t%s\t\t%s\t\t%d",hashTable[i].name, hashTable[i].type, hashTable[i].value, base);
+		base = base + 4;
+		}
+
+}
+
 int hash1(char *token) {
     
     int hash = 0;
@@ -843,7 +859,4 @@ int hash1(char *token) {
     hash = hash % TABLE_SIZE;
     return hash;
 
-}
-return 0
-;
 }
