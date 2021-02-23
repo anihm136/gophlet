@@ -23,7 +23,8 @@ import (
 )
 
 func main() {
-     for i := range x {
+     var a = 10
+     for i := 1; i < 10; i++ {
        i = 1+2*3-4/5
        j := 5.6
        k = i * j

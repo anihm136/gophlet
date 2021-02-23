@@ -731,6 +731,7 @@ StatementList :
 /* To be modified */
 Statement :
 					SimpleStmt
+					| Declaration
 					| ForStmt
 					| IfStmt
 					| ReturnStmt
@@ -861,5 +862,4 @@ int main()
 	printf("-------------SYMBOL TABLE-----------------");
 	disp_symtbl();
 	return 0;
-}
 }
