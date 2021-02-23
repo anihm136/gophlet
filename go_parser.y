@@ -26,7 +26,8 @@ stack stack_i;
 strack_i.s = create(20);
 stack stack_v;
 strack_v.s = create(20);
-
+stack_i.top = -1;
+satck_v.top = -1;
 %}
 
 %define api.value.type union
@@ -386,8 +387,8 @@ TypeDef :
 ;
 
 VarDecl :
-				K_VAR VarSpec
-				| K_VAR '(' VarSpecs ')'
+				K_VAR VarSpec {dec = 1;}
+				| K_VAR '(' VarSpecs ')' {dec = 1;}
 ;
 VarSpecs : VarSpec
 				 | VarSpecs VarSpec
@@ -396,29 +397,62 @@ VarSpec :
 				IdentifierList VIdentifierListSuff
 ;
 VIdentifierListSuff :
-									 Type VIdentifierListTypeSuff %prec NORMAL
-									 | '=' ExprList %prec NORMAL
-									 | %empty %prec EMPTY
+									 Type VIdentifierListTypeSuff %prec NORMAL {$2 = $1}
+									 | '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
+											 			printf("Error");
+													else {
+											 			while(!stempty(stack_i)) {
+											 				$2 = pop(&stack_i);
+															$1 = pop(&stack_v);
+															update($2, "NULL", $1);
+														}
+														dec = 0;
+														}}
+									 | %empty %prec EMPTY 
 ;
 VIdentifierListTypeSuff :
-											 '=' ExprList %prec NORMAL
-											 | %empty %prec EMPTY
+											 '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
+											 				printf("Error");
+														     else {
+											 				while(!stempty(stack_i)) {
+											 					$2 = pop(&stack_i);
+																$1 = pop(&stack_v);
+																update($2, $$, $1);
+														}
+														dec = 0;
+														}}
+											 | %empty %prec EMPTY {while(!stempty(stack_i)) {
+											 				$2 = pop(&stack_i);
+															update($2, $$, "NULL");
+															}
+															dec = 0;}
 ;
 
 IdentifierList :
-							 T_ID IdentifierList2
+							 T_ID IdentifierList2 {if(dec==1) {
+							 				insert($1,"NULL","NULL"); 
+											push(&stack_i, $1);}
+										else{
+											search($3);}
 ;
 IdentifierList2 :
-								IdentifierList2 ',' T_ID %prec NORMAL
-								| %empty %prec EMPTY
+								IdentifierList2 ',' T_ID %prec NORMAL {if(dec==1) {
+							 				insert($3,"NULL","NULL"); 
+											push(&stack_i, $1);}
+										else{
+											search($3);}
+								| %empty %prec EMPTY 
 ;
 
 /* Expressions */
 ExprList :
-				 Expr ExprList2
+				 Expr ExprList2 {if (dec == 1)
+				 			push(&stack_v, $1);}
 ;
 ExprList2 :
-					ExprList2 ',' Expr %prec NORMAL
+					ExprList2 ',' Expr %prec NORMAL { if (dec == 1)
+				 						push(&stack_v, $1);}
+
 					| %empty %prec EMPTY
 ;
 
@@ -780,7 +814,7 @@ int check(char *token) {
 }
 
 
-void update(char *token, char *value) {
+void update(char *token, char *type, char *value) {
 
     int index = check(token);
     if ( index == 1 ) {
@@ -791,6 +825,7 @@ void update(char *token, char *value) {
 
     else {
 	strcpy(hashTable[newIndex].value, value);
+	strcpy(hashTable[newIndex].type, type);
     }
 
 
