@@ -159,6 +159,9 @@ void update(char *token, char *type, char *value) {
 %start SourceFile
 /* %expect 11 */
 
+%type <int> Expr UnaryExpr PrimaryExpr Operand Literal BasicLit
+%type <char const *> Type VIdentifierListSuff VIdentifierListTypeSuff
+
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
 %token <double> L_FLOAT "float literal"
@@ -520,23 +523,74 @@ VarSpec :
 				IdentifierList VIdentifierListSuff
 ;
 VIdentifierListSuff :
-									 Type VIdentifierListTypeSuff %prec NORMAL 
-									 | '=' ExprList %prec NORMAL 
+									 Type VIdentifierListTypeSuff %prec NORMAL {if(stempty(stack_v)) {
+									 						while(!stempty(stack_i))
+									 						update(pop(&stack_i), $1, "NULL");
+															}
+														else {
+															if(stack_v.top != stack_i.top)
+																printf("ERROR");
+															else {
+															while(!stempty(stack_i))
+									 						update(pop(&stack_i), $1, pop(&stack_v));
+															
+															}
+														}
+															}
+									 | '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
+											 			printf("Error");
+													else {
+											 			while(!stempty(stack_i)) {
+															update(pop(&stack_i), "NULL", pop(&stack_v)); 
+														}
+														dec = 0;
+														}}
 ;
 VIdentifierListTypeSuff :
-											 '=' ExprList %prec NORMAL 
+											 '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
+											 				yyerror("Imbalanced assignment");
+														     else {
+											 				while(!stempty(stack_i)) {
+															update(pop(&stack_i), "NULL", pop(&stack_v));
+															
+														}
+														dec = 0;
+														}}
 											 | %empty %prec EMPTY 
 ;
 
 IdentifierList :
-							 T_ID
-							 | IdentifierList ',' T_ID
+							 T_ID IdentifierList2 
+								{
+								if(dec==1) {
+												insert(yylval.T_ID,"NULL","NULL"); 
+											push(&stack_i, yylval.T_ID);
+								}	else {
+											search(yylval.T_ID);
+								}
+								}
+;
+IdentifierList2 :
+								IdentifierList2 ',' T_ID %prec NORMAL {if(dec==1) {
+							 				insert(yylval.T_ID,"NULL","NULL"); 
+											push(&stack_i, yylval.T_ID);}
+										else{
+											search(yylval.T_ID);
+											}
+										}
+								| %empty %prec EMPTY 
 ;
 
 /* Expressions */
 ExprList :
-				 Expr 
-				 | ExprList ',' Expr 
+				 Expr ExprList2 {if (dec == 1)
+				 			push(&stack_v, $1);}
+;
+ExprList2 :
+					ExprList2 ',' Expr %prec NORMAL { if (dec == 1)
+				 						push(&stack_v, $3);}
+
+					| %empty %prec EMPTY
 ;
 
 /* binary_op  :
@@ -600,14 +654,17 @@ Expr :
 		 | Expr add_op Expr %prec '+'
 		 | Expr mul_op Expr %prec '-'
 		 | UnaryExpr %prec P_UNARY
+						{$$ = $1;}
 ;
 UnaryExpr :
 					O_CHAN_DIR UnaryExpr
 					| unary_op UnaryExpr %prec P_UNARY
 					| PrimaryExpr
+						{$$ = $1;}
 ;
 PrimaryExpr :
 						Operand
+						{$$ = $1;}
 						/* | PrimaryExpr Selector */
 						| PrimaryExpr Index 
 /* | PrimaryExpr Slice  */
@@ -646,6 +703,7 @@ ArgsOp2 :
 
 Operand     :
 						Literal 
+						{$$ = $1;}
 						| OperandName 
 						| '(' Expr ')'
 						| P_NIL
@@ -653,11 +711,13 @@ Operand     :
 ;
 Literal     :
 						BasicLit 
+						{$$ = $1;}
 						/* | CompositeLit  */
 						| FunctionLit
 ;
 BasicLit    :
 						L_INT
+						{$$ = $1;}
 						| L_FLOAT
 						/* | imaginary_lit  */
 						| L_RUNE
@@ -794,11 +854,25 @@ void yyerror(char const* error) {
 ;
 }
 
+void disp_symtbl() {
+	int base = 1000;
+	printf("%s\t\t%s\t\t%s\t\t%s","Name", "Type", "Value", "addr");
+
+	for(int i=0; i<TABLE_SIZE; i++) {
+		if(hashTable[i].hcode != -1 )
+			printf("%s\t\t%s\t\t%s\t\t%d",hashTable[i].name, hashTable[i].type, hashTable[i].value, base);
+		base = base + 4;
+		}
+
+}
+
 int main()
 {
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
-	/* yydebug = 1; */
+	yydebug = 1;
 	yyparse();
+	printf("-------------SYMBOL TABLE-----------------");
+	disp_symtbl();
 	return 0;
 }
