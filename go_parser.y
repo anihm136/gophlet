@@ -715,6 +715,8 @@ void yyerror(char const* error) {
 
 int main()
 {
+	for(int i=0; i<TABLE_SIZE; i++)
+		hashTable[i].hcode = -1;
 	yydebug = 1;
 	yyparse();
 	printf("-------------SYMBOL TABLE-----------------");
@@ -842,7 +844,8 @@ void disp_symtbl() {
 	printf("%s\t\t%s\t\t%s\t\t%s","Name", "Type", "Value", "addr");
 
 	for(int i=0; i<TABLE_SIZE; i++) {
-		printf("%s\t\t%s\t\t%s\t\t%d",hashTable[i].name, hashTable[i].type, hashTable[i].value, base);
+		if(hashTable[i].hcode != -1 )
+			printf("%s\t\t%s\t\t%s\t\t%d",hashTable[i].name, hashTable[i].type, hashTable[i].value, base);
 		base = base + 4;
 		}
 
