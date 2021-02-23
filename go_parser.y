@@ -125,7 +125,7 @@ satck_v.top = -1;
 /* Top Level */
 SourceFile :
 					 PackageClause ImportDecls TopLevelDecls
-					 {if (yychar != YYEOF) {printf("Invalid\n")
+					 {if (yychar != YYEOF) {printf("Invalid - reached start symbol before EOF\n")
 ; YYERROR;} printf("Valid\n"); YYACCEPT;}
 
 ;
@@ -181,9 +181,9 @@ TypeLiteral :
 						ArrayType 
 						| StructType 
 						| PointerType 
+						| SliceType 
 /* 						| FunctionType  */
 /* 						| InterfaceType  */
-/* 						| SliceType  */
 /* 						| MapType  */
 /* 						| ChannelType */
 ;
@@ -202,10 +202,10 @@ ElementType :
 						Type
 ;
 
-/* SliceType : */
-/* 					'[' ']' ElementType */
-/* ; */
-/*  */
+SliceType :
+					'[' ']' ElementType
+;
+
 /* MapType     : */
 /* 						K_MAP '[' KeyType ']' ElementType */
 /* ; */
@@ -429,11 +429,15 @@ VIdentifierListTypeSuff :
 ;
 
 IdentifierList :
-							 T_ID IdentifierList2 {if(dec==1) {
-							 				insert($1,"NULL","NULL"); 
-											push(&stack_i, $1);}
-										else{
-											search($3);}
+							 T_ID IdentifierList2 
+								{
+								if(dec==1) {
+												insert($1,"NULL","NULL"); 
+											push(&stack_i, $1);
+								}	else {
+											search($3);
+								}
+								}
 ;
 IdentifierList2 :
 								IdentifierList2 ',' T_ID %prec NORMAL {if(dec==1) {
@@ -441,6 +445,7 @@ IdentifierList2 :
 											push(&stack_i, $1);}
 										else{
 											search($3);}
+											}
 								| %empty %prec EMPTY 
 ;
 
