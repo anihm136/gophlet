@@ -544,10 +544,7 @@ VIdentifierListTypeSuff :
 														}
 														dec = 0;
 														}}
-											 | %empty %prec EMPTY {while(!stempty(stack_i)) {
-															update( pop(&stack_i), $$, "NULL");
-															}
-															dec = 0;}
+											 | %empty %prec EMPTY 
 ;
 
 IdentifierList :
@@ -843,12 +840,26 @@ void yyerror(char const* error) {
 ;
 }
 
+void disp_symtbl() {
+	int base = 1000;
+	printf("%s\t\t%s\t\t%s\t\t%s","Name", "Type", "Value", "addr");
+
+	for(int i=0; i<TABLE_SIZE; i++) {
+		if(hashTable[i].hcode != -1 )
+			printf("%s\t\t%s\t\t%s\t\t%d",hashTable[i].name, hashTable[i].type, hashTable[i].value, base);
+		base = base + 4;
+		}
+
+}
+
 int main()
 {
-yydebug = 1
-;
-yyparse()
-;
-return 0
-;
+	for(int i=0; i<TABLE_SIZE; i++)
+		hashTable[i].hcode = -1;
+	yydebug = 1;
+	yyparse();
+	printf("-------------SYMBOL TABLE-----------------");
+	disp_symtbl();
+	return 0;
+}
 }
