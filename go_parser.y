@@ -523,7 +523,20 @@ VarSpec :
 				IdentifierList VIdentifierListSuff
 ;
 VIdentifierListSuff :
-									 Type VIdentifierListTypeSuff %prec NORMAL {$2 = $1;}
+									 Type VIdentifierListTypeSuff %prec NORMAL {if(stempty(stack_v)) {
+									 						while(!stempty(stack_i))
+									 						update(pop(&stack_i), $1, "NULL");
+															}
+														else {
+															if(stack_v.top != stack_i.top)
+																printf("ERROR");
+															else {
+															while(!stempty(stack_i))
+									 						update(pop(&stack_i), $1, pop(&stack_v));
+															
+															}
+														}
+															}
 									 | '=' ExprList %prec NORMAL { if(stack_v.top != stack_i.top)
 											 			printf("Error");
 													else {
