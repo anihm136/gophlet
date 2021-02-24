@@ -1,5 +1,6 @@
 %{
 #include "common.h"
+#include "go_parser.tab.h"
 %}
 
 %option yylineno
@@ -123,7 +124,8 @@ keyword_var         var
 predeclared_type bool|byte|complex64|complex128|error|float32|float64|int|int8|int16|int32|int64|rune|string|uint|uint8|uint16|uint32|uint64|uintptr
 
 /* Predeclared constants */
-predeclared_const true|false|iota
+predeclared_const true|false
+/* |iota */
 
 /* Zero value */
 predeclared_zero nil
@@ -139,34 +141,34 @@ block_comment "/*"[^*]*"*"+([^*/][^*]*"*"+)*"/"
 
 {whitespace} ;
 {comment} ;
-{operator_char}     return yytext[0];
-{operator_addeq}    return O_ADDEQ;
-{operator_andeq}    return O_ANDEQ;
-{operator_land}     return O_LAND;
-{operator_eq}       return O_EQ;
-{operator_lneq}     return O_NEQ;
-{operator_subeq}    return O_SUBEQ;
-{operator_oreq}     return O_OREQ;
-{operator_lor}      return O_LOR;
-{operator_lt}       return O_LT;
-{operator_leq}      return O_LEQ;
-{operator_muleq}    return O_MULEQ;
-{operator_xoreq}    return O_XOREQ;
-{operator_chan_dir} return O_CHAN_DIR;
-{operator_gt}       return O_GT;
-{operator_geq}      return O_GEQ;
-{operator_lshift}   return O_LSHIFT;
-{operator_diveq}    return O_DIVEQ;
-{operator_lshifteq} return O_LSHIFTEQ;
-{operator_inc}      return O_INC;
-{operator_assgn}    return O_ASSGN;
-{operator_rshift}   return O_RSHIFT;
-{operator_modeq}    return O_MODEQ;
-{operator_rshifteq} return O_RSHIFTEQ;
-{operator_dec}      return O_DEC;
-{operator_ellipses} return O_ELLIPSES;
-{operator_ampxor}   return O_AMPXOR;
-{operator_ampxoreq} return O_AMPXOREQ;
+{operator_char}     {*((int*)&yylval) = yytext[0]; return yytext[0];}
+{operator_addeq}    {yylval.O_ADDEQ = yytext; return O_ADDEQ;}
+{operator_andeq}    {yylval.O_ANDEQ = yytext; return O_ANDEQ;}
+{operator_land}     {yylval.O_LAND = yytext; return O_LAND;}
+{operator_eq}       {yylval.O_EQ = yytext; return O_EQ;}
+{operator_lneq}     {yylval.O_NEQ = yytext; return O_NEQ;}
+{operator_subeq}    {yylval.O_SUBEQ = yytext; return O_SUBEQ;}
+{operator_oreq}     {yylval.O_OREQ = yytext; return O_OREQ;}
+{operator_lor}      {yylval.O_LOR = yytext; return O_LOR;}
+{operator_lt}       {yylval.O_LT = yytext; return O_LT;}
+{operator_leq}      {yylval.O_LEQ = yytext; return O_LEQ;}
+{operator_muleq}    {yylval.O_MULEQ = yytext; return O_MULEQ;}
+{operator_xoreq}    {yylval.O_XOREQ = yytext; return O_XOREQ;}
+{operator_chan_dir} {yylval.O_CHAN_DIR = yytext; return O_CHAN_DIR;}
+{operator_gt}       {yylval.O_GT = yytext; return O_GT;}
+{operator_geq}      {yylval.O_GEQ = yytext; return O_GEQ;}
+{operator_lshift}   {yylval.O_LSHIFT = yytext; return O_LSHIFT;}
+{operator_diveq}    {yylval.O_DIVEQ = yytext; return O_DIVEQ;}
+{operator_lshifteq} {yylval.O_LSHIFTEQ = yytext; return O_LSHIFTEQ;}
+{operator_inc}      {yylval.O_INC = yytext; return O_INC;}
+{operator_assgn}    {yylval.O_ASSGN = yytext; return O_ASSGN;}
+{operator_rshift}   {yylval.O_RSHIFT = yytext; return O_RSHIFT;}
+{operator_modeq}    {yylval.O_MODEQ = yytext; return O_MODEQ;}
+{operator_rshifteq} {yylval.O_RSHIFTEQ = yytext; return O_RSHIFTEQ;}
+{operator_dec}      {yylval.O_DEC = yytext; return O_DEC;}
+{operator_ellipses} {yylval.O_ELLIPSES = yytext; return O_ELLIPSES;}
+{operator_ampxor}   {yylval.O_AMPXOR = yytext; return O_AMPXOR;}
+{operator_ampxoreq} {yylval.O_AMPXOREQ = yytext; return O_AMPXOREQ;}
 {keyword_break} {return K_BREAK;}
 {keyword_default} {return K_DEFAULT;}
 {keyword_func} {return K_FUNC;}
@@ -195,7 +197,7 @@ block_comment "/*"[^*]*"*"+([^*/][^*]*"*"+)*"/"
 {predeclared_type} return P_TYPE;
 {predeclared_const} return P_CONST;
 {predeclared_zero} return P_NIL;
-{predeclared_functions} return P_FUNC;
+{predeclared_functions} {yylval.P_FUNC = yytext; return P_FUNC;}
 {identifier} {yylval.T_ID = yytext; return T_ID;}
 {int_lit} {yylval.L_INT = atoi(yytext); return L_INT;}
 {float_lit} {yylval.L_FLOAT = atof(yytext); return L_FLOAT;}

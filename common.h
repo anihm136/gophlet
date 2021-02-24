@@ -1,6 +1,39 @@
 #include <stdio.h>
 #include <ctype.h>
-#include "go_parser.tab.h"
+#include <string.h>
+#include <stdlib.h>
+
+#define INT 1
+#define FLOAT 2
+#define STRING 3
+#define RUNE 4
+#define ID 5
+#define SEQ 6
+#define OP 7
+#define NIL 8
+#define BOOL 9
+#define FUNC 10
+
+struct node;
+
+union NodeVal {
+	int i;
+	float f;
+	char str[100];
+	char name[100];
+	char b;
+	char op[5];
+	struct node* n;
+};
+
+typedef struct node {
+	int type;
+	union NodeVal value;
+	struct node* lop;
+	struct node* rop;
+} Node;
+
+Node *makeNode(int type, union NodeVal value, Node* lop, Node* rop);
 
 int yylex();
 
