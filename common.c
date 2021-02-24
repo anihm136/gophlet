@@ -8,3 +8,12 @@ Node *makeNode(int type, union NodeVal value, Node* lop, Node* rop) {
 	newNode->rop = rop;
 	return newNode;
 }
+
+int seqLen(Node *seq) {
+	int len = 1;
+	while (seq->rop) {
+		++len;
+		seq = seq->rop;
+	}
+	return len;
+}

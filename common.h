@@ -34,6 +34,7 @@ typedef struct node {
 } Node;
 
 Node *makeNode(int type, union NodeVal value, Node* lop, Node* rop);
+int seqLen(Node *seq);
 
 int yylex();
 

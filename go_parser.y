@@ -2,7 +2,6 @@
 #include "common.h"
 #include <stdio.h>
 
-int dec = 0;
 int TABLE_SIZE = 10009;
 union NodeVal value;
 
@@ -158,7 +157,7 @@ void update(char *token, char *type, char *value) {
 %start SourceFile
 /* %expect 11 */
 
-%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment
+%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -261,7 +260,7 @@ PackageClause :
 
 PackageName :
 						T_ID
-						{strcpy(value.name, yylval.T_ID); $$ = makeNode(ID, value, NULL, NULL);}
+						{strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL);}
 ;
 
 /* Import */
@@ -315,7 +314,7 @@ TypeLiteral :
 
 QualifiedID :
 						PackageName '.' T_ID
-						{value.name[0] = 0; strcat(value.name, $1->value.name); strcat(value.name, "."); strcat(value.name, yylval.T_ID); $$ = makeNode(ID, value, NULL, NULL);}
+						{value.name[0] = 0; strcat(value.name, $1->value.name); strcat(value.name, "."); strcat(value.name, $3); $$ = makeNode(ID, value, NULL, NULL);}
 ;
 
 ArrayType   :
@@ -513,29 +512,34 @@ TypeDef :
 ;
 
 VarDecl :
-				K_VAR VarSpec {dec = 1;}
-				| K_VAR '(' VarSpecs ')' {dec = 1;}
+				K_VAR VarSpec
+				| K_VAR '(' VarSpecs ')'
 ;
 VarSpecs : VarSpec
 				 | VarSpecs VarSpec
 ;
 VarSpec :
 				IdentifierList VIdentifierListSuff
+				{if($2) {printf("Assigning to variables\nIds: %d Exprs: %d\n", seqLen($1), seqLen($2->value.n)); value.op[0] = '='; value.op[1] = 0; $$ = makeNode(OP, value, $1, $2);} else {printf("Not assigning\n");$$ = NULL;}}
 ;
 VIdentifierListSuff :
-									 Type VIdentifierListTypeSuff %prec NORMAL 
-									 | '=' ExprList %prec NORMAL 
+									 Type VIdentifierListTypeSuff
+									 {$$ = $2;}
+									 | '=' ExprList
+									 {value.n = $2; $$ = makeNode(OP, value, NULL, NULL);}
 ;
 VIdentifierListTypeSuff :
 											 '=' ExprList %prec NORMAL 
+											 {value.n = $2; $$ = makeNode(OP, value, NULL, NULL);}
 											 | %empty %prec EMPTY 
+											 {$$ = NULL;}
 ;
 
 IdentifierList :
 							 T_ID
-							 {strcpy(value.name, yylval.T_ID); $$ = makeNode(ID, value, NULL, NULL); printf("%d %s\n", $$->type, $$->value.name);}
+							 {strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL); printf("Type: %d Value: %s\n", $$->type, $$->value.name);}
 							 | IdentifierList ',' T_ID
-							 {strcpy(value.name, yylval.T_ID); $$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), $1);}
+							 {strcpy(value.name, $3); $$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), $1);}
 ;
 
 /* Expressions */
@@ -556,17 +560,17 @@ ExprList :
 ; */
 rel_op     :
 					 O_EQ 
-					 {strcpy(value.op, yylval.O_EQ); printf("Did 1"); $$ = makeNode(OP, value, NULL, NULL); printf("Did 2"); }
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL); }
 					 | O_NEQ
-					 {strcpy(value.op, yylval.O_NEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_LT
-					 {strcpy(value.op, yylval.O_LT); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_LEQ
-					 {strcpy(value.op, yylval.O_LEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_GT
-					 {strcpy(value.op, yylval.O_GT); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_GEQ
-					 {strcpy(value.op, yylval.O_GEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 ;
 add_op     :
 					 '+' 
@@ -586,13 +590,13 @@ mul_op     :
 					 | '%' 
 					 {value.op[0] = *((int*)&yylval); value.op[1] = 0; $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_LSHIFT 
-					 {strcpy(value.op, yylval.O_LSHIFT); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_RSHIFT 
-					 {strcpy(value.op, yylval.O_RSHIFT); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | '&' 
 					 {value.op[0] = *((int*)&yylval); value.op[1] = 0; $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_AMPXOR
-					 {strcpy(value.op, yylval.O_AMPXOR); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 ;
 unary_op   :
 					 '+' 
@@ -611,34 +615,34 @@ unary_op   :
 
 assign_op  :
 					 O_ADDEQ
-					 {strcpy(value.op, yylval.O_ADDEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_SUBEQ
-					 {strcpy(value.op, yylval.O_SUBEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_OREQ
-					 {strcpy(value.op, yylval.O_OREQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_XOREQ
-					 {strcpy(value.op, yylval.O_XOREQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_MULEQ
-					 {strcpy(value.op, yylval.O_MULEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_DIVEQ
-					 {strcpy(value.op, yylval.O_DIVEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_MODEQ
-					 {strcpy(value.op, yylval.O_MODEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_ANDEQ
-					 {strcpy(value.op, yylval.O_ANDEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_LSHIFTEQ
-					 {strcpy(value.op, yylval.O_LSHIFTEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_RSHIFTEQ
-					 {strcpy(value.op, yylval.O_RSHIFTEQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 					 | O_AMPXOREQ
-					 {strcpy(value.op, yylval.O_AMPXOREQ); $$ = makeNode(OP, value, NULL, NULL);}
+					 {strcpy(value.op, $1); $$ = makeNode(OP, value, NULL, NULL);}
 ;
 
 Expr :
 		 Expr O_LOR Expr
-		 {strcpy(value.op, yylval.O_LOR); $$ = makeNode(OP, value, $1, $3);}
+		 {strcpy(value.op, $2); $$ = makeNode(OP, value, $1, $3);}
 		 | Expr O_LAND Expr
-		 {strcpy(value.op, yylval.O_LAND); $$ = makeNode(OP, value, $1, $3);}
+		 {strcpy(value.op, $2); $$ = makeNode(OP, value, $1, $3);}
 		 | Expr rel_op Expr %prec O_EQ
 		 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
 		 | Expr add_op Expr %prec '+'
@@ -650,7 +654,7 @@ Expr :
 ;
 UnaryExpr :
 					O_CHAN_DIR UnaryExpr
-					{strcpy(value.op, yylval.O_CHAN_DIR); $$ = makeNode(OP, value, $2, NULL);}
+					{strcpy(value.op, $1); $$ = makeNode(OP, value, $2, NULL);}
 					| unary_op UnaryExpr %prec P_UNARY
 					{strcpy(value.op, $1->value.op); $$ = makeNode(OP, value, $2, NULL);}
 					| PrimaryExpr
@@ -697,15 +701,15 @@ ArgsOp2 :
 
 Operand     :
 						Literal 
-						{printf("Did 18");$$ = $1;}
+						{$$ = $1;}
 						| OperandName 
-						{printf("Did 16");$$ = $1;}
+						{$$ = $1;}
 						| '(' Expr ')'
 						{$$ = $2;}
 						| P_NIL
 						{value.n = NULL; $$ = makeNode(INT, value, NULL, NULL);}
 						| P_CONST
-						{value.b = strcmp(yylval.P_CONST, "true")==0 ? 1 : 0; $$ = makeNode(BOOL, value, NULL, NULL);}
+						{value.b = strcmp($1, "true")==0 ? 1 : 0; $$ = makeNode(BOOL, value, NULL, NULL);}
 ;
 Literal     :
 						BasicLit 
@@ -715,25 +719,25 @@ Literal     :
 ;
 BasicLit    :
 						L_INT
-						{value.i = yylval.L_INT; $$ = makeNode(INT, value, NULL, NULL);}
+						{value.i = $1; $$ = makeNode(INT, value, NULL, NULL);}
 						| L_FLOAT
-						{value.f = yylval.L_FLOAT; $$ = makeNode(FLOAT, value, NULL, NULL);}
+						{value.f = $1; $$ = makeNode(FLOAT, value, NULL, NULL);}
 						/* | imaginary_lit  */
 						| L_RUNE
-						{strcpy(value.str, yylval.L_RUNE); $$ = makeNode(RUNE, value, NULL, NULL);}
+						{strcpy(value.str, $1); $$ = makeNode(RUNE, value, NULL, NULL);}
 						| L_STRING
-						{strcpy(value.str, yylval.L_STRING); $$ = makeNode(STRING, value, NULL, NULL);}
+						{strcpy(value.str, $1); $$ = makeNode(STRING, value, NULL, NULL);}
 ;
 FunctionLit : 
 						K_FUNC Signature FunctionBody
 ;
 OperandName :
 						T_ID 
-						{printf("%s\n", yylval.T_ID);} // strcpy(value.name, yylval.T_ID);} // printf("Did 11"); $$ = makeNode(ID, value, NULL, NULL); printf("Did 12");}
+						{strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL);}
 						| P_FUNC
-						{printf("Did 20");strcpy(value.name, yylval.P_FUNC); $$ = makeNode(FUNC, value, NULL, NULL);}
+						{strcpy(value.name, $1); $$ = makeNode(FUNC, value, NULL, NULL);}
 						| QualifiedID
-						{printf("Did 30");$$ = $1;}
+						{$$ = $1;}
 ;
 
 /* Blocks and Statements */
@@ -784,7 +788,7 @@ IncDecStmt :
 
 Assignment :
 					 ExprList '=' ExprList
-					 {value.op[0] = '='; value.op[1] = 0; printf("%s\n", value.op); $$ = makeNode(OP, value, $1, $3); printf("Done 111\n");}
+					 {printf("started\n"); value.op[0] = '='; value.op[1] = 0; printf("Operator: %s\n", value.op); $$ = makeNode(OP, value, $1, $3);}
 					 | Expr assign_op Expr
 					 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
 ;
@@ -864,7 +868,7 @@ int main()
 {
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
-	yydebug = 1;
+	/* yydebug = 1; */
 	yyparse();
 	return 0;
 }
