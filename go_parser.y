@@ -73,7 +73,7 @@ int check(char *token) {
 				
 				int index1 = hash1(token); 
 				int i = 0;
-				while ( i < TABLE_SIZE && hashTable[( index1 + i ) % TABLE_SIZE].name != token )
+				while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token) != 0 )
 								i++;
 
 				if ( i == TABLE_SIZE )
@@ -135,18 +135,19 @@ void search(char *token) {
 
 
 void update(char *token, char *type, char *value) {
-
-				int index = check(token);
-				if ( index == 1 ) {
-								printf("Error: %s is not defined\n", token);
-								exit(0);
-								return;
-				}
-
-				else {
-	strcpy(hashTable[index].value, value);
-	strcpy(hashTable[index].type, type);
-				}
+	int index = check(token);
+	if ( index == 1 ) {
+		printf("Error: %s is not defined\n", token);
+		exit(0);
+		return;
+	}
+	
+	else {
+		if (strcmp(hashTable.value, "NULL") != 0)
+			strcpy(hashTable[index].value, value);
+		if (strcmp(hashTable.type, "NULL") != 0)
+			strcpy(hashTable[index].type, type);
+	}
 }
 
 %}
