@@ -143,9 +143,9 @@ void update(char *token, char *type, char *value) {
 	}
 	
 	else {
-		if (strcmp(hashTable.value, "NULL") != 0)
+		if (strcmp(hashTable[index].value, "NULL") != 0)
 			strcpy(hashTable[index].value, value);
-		if (strcmp(hashTable.type, "NULL") != 0)
+		if (strcmp(hashTable[index].type, "NULL") != 0)
 			strcpy(hashTable[index].type, type);
 	}
 }
