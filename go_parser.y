@@ -570,7 +570,7 @@ TypeDef :
 ;
 
 VarDecl :
-				K_VAR VarSpecs 		{ 
+				K_VAR VarSpec 		{ 
 										if(stack_v.top != stack_i.top && stack_v.top != -1) {
 												yyerror("Imbalanced assignment");
 												YYERROR;
@@ -636,12 +636,12 @@ VIdentifierListSuff :
 									 Type VIdentifierListTypeSuff
 									 {	
 									 	$$ = $2;
-									 	strcpy(Tflag, $1->value.name);			 							
+									 	strcpy(Tflag, $1->value.name);
 									 }
 									 | '=' ExprList
 									 {	
 									 	value.n = $2; 
-									 	$$ = makeNode(OP, value, NULL, NULL);									
+									 	$$ = makeNode(OP, value, NULL, NULL);
 									 }
 ;
 VIdentifierListTypeSuff :
@@ -992,7 +992,7 @@ Assignment :
 					 }
 ;
 
-ShortVarDecl :		IdentifierList O_ASSGN ExprList 
+ShortVarDecl : IdentifierList O_ASSGN ExprList
 					{
 						if(stack_v.top != stack_i.top && stack_v.top != -1) {
 							yyerror("Imbalanced assignment");
@@ -1093,7 +1093,7 @@ int main()
 	base++;
 	push(&stack_scope, result);
 
-	/* yydebug = 1; */
+	yydebug = 1;
 	if ( yyparse() != 0){
 		printf("BUILD FAILED...!!\n\n");
 		exit(1);

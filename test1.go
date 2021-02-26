@@ -26,6 +26,9 @@ func main() {
 
     var b, c int = 1, 2
     
+ var e int
+    d := 3.7
+    
     
 	var i = 0 
     for i < 3 { 
