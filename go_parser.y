@@ -5,13 +5,14 @@
 int TABLE_SIZE = 10009;
 union NodeVal value;
 
-int decFlag = 0;
+int base = 1000;
 
 typedef struct symbol_table {
     char name[31];
-    char type[10];
+    char dtype[10];
+    char type;
     char value[20];
-    int scope;
+    char scope[10];
     int hcode;
   }ST;
   
@@ -21,51 +22,51 @@ struct Stack {
    char s[25][25];
    int top;
 };
+
 typedef struct Stack stack;
 
 stack stack_i = {.top = -1};
 stack stack_v = {.top = -1};
 stack stack_t = {.top = -1};
+stack stack_scope = {.top = -1};
 
 char result[20];
 
 
 int stfull(stack st,int size) {
-			if (st.top >= size - 1)
-						return 1;
-			else
-						return 0;
+	if (st.top >= size - 1)
+		return 1;
+	else
+		return 0;
 }
 
 void push(stack *p_st,char *item) {
-			p_st->top++;
-			strcpy(p_st->s[p_st->top], item);
+	p_st->top++;
+	strcpy(p_st->s[p_st->top], item);
 }
 
 int stempty(stack st) {
-			if (st.top == -1)
-						return 1;
-			else
-						return 0;
+	if (st.top == -1)
+		return 1;
+	else
+		return 0;
 }
 
 char * pop(stack *p_st) {
-			char *item;
-			item = p_st->s[p_st->top];
-			p_st->top--;
-			return (item);
+	char *item;
+	item = p_st->s[p_st->top];
+	p_st->top--;
+	return (item);
 }
 
 int hash1(char *token) {
 				
-				int hash = 0;
-				for (int i = 0; token[i] != '\0'; i++) 
-				{ 
-								hash = ( 256 * hash + token[i] ) % 1000000009; 
-				}
-
-				hash = hash % TABLE_SIZE;
-				return hash;
+	int hash = 0;
+	for (int i = 0; token[i] != '\0'; i++) { 
+		hash = ( 256 * hash + token[i] ) % 1000000009; 
+	}
+	hash = hash % TABLE_SIZE;
+	return hash;
 
 }
 
@@ -84,7 +85,7 @@ int check(char *token) {
 }
 
 
-void insert(char *token, char *type, char *value) {
+void insert(char type, char *token, char *dtype, char *value) {
 
   if (check(token) != 1) {
   	yyerror("variable is redeclared");
@@ -101,9 +102,11 @@ void insert(char *token, char *type, char *value) {
       int newIndex = (index + i) % TABLE_SIZE;
 
       if (hashTable[newIndex].hcode == -1) {
+
         strcpy(hashTable[newIndex].name, token);
-        strcpy(hashTable[newIndex].type, type);
+        strcpy(hashTable[newIndex].dtype, dtype);
         strcpy(hashTable[newIndex].value, value);
+        hashTable[newIndex].type = type;
         hashTable[newIndex].hcode = 1;
         break;
       }
@@ -113,28 +116,28 @@ void insert(char *token, char *type, char *value) {
 
   else {
     strcpy(hashTable[index].name, token);
-    strcpy(hashTable[index].type, type);
+    strcpy(hashTable[index].dtype, dtype);
     strcpy(hashTable[index].value, value);
+    hashTable[index].type = type;
     hashTable[index].hcode = 1;
   }
 }
-void search(char *token) {
+char * search(char *token) {
 
-				int index1 = hash1(token); 
-				int i = 0;
-				while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token)!=0 )
-								i++;
-
-				if ( i == TABLE_SIZE ) {
-								printf("Error: %s is not defined\n", token);
-								exit(0);
-				}
-				else
-								return ;
+	int index1 = hash1(token); 
+	int i = 0;
+	while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token)!=0)
+		i++;
+	if ( i == TABLE_SIZE ) {
+		printf("Error: %s is not defined\n", token);
+		exit(0);
+	}
+	else
+		return hashTable[index1 + i].dtype;
 }
 
 
-void update(char *token, char *type, char *value) {
+void update(char *token, char *dtype, char *value) {
 	int index = check(token);
 	if ( index == 1 ) {
 		printf("Error: %s is not defined\n", token);
@@ -142,22 +145,27 @@ void update(char *token, char *type, char *value) {
 		return;
 	}
 	
+	if (hashTable[index].type == 'c') {
+		printf("Error: cannot assign to %s (declared const)", token);
+		exit(0);
+		return;
+	}
 	else {
 		if (strcmp(hashTable[index].value, "NULL") != 0)
 			strcpy(hashTable[index].value, value);
-		if (strcmp(hashTable[index].type, "NULL") != 0)
-			strcpy(hashTable[index].type, type);
+		if (strcmp(hashTable[index].dtype, "NULL") != 0)
+			strcpy(hashTable[index].dtype, dtype);
 	}
 }
 
 void disp_symtbl() {
 
 	int base = 1000;
-	printf("%s\t\t%s\t\t%s\n","Name", "Type", "Value");
+	printf("%s\t%s\t\t%s\t\t%s\n","Name", "Type","Data Type", "Value");
 
 	for(int i=0; i<TABLE_SIZE; i++) {
 		if(hashTable[i].hcode != -1 )
-			printf("%s\t\t%s\t\t%s\n",hashTable[i].name, hashTable[i].type, hashTable[i].value);
+			printf("%s\t%c\t\t%s\t\t\t%s\n",hashTable[i].name, hashTable[i].type, hashTable[i].dtype, hashTable[i].value);
 		}
 
 }
@@ -167,11 +175,13 @@ void disp_symtbl() {
 
 %define api.value.type union
 %define parse.error verbose
-/* %define api.value.prefix {T_} */
+
 %start SourceFile
 /* %expect 11 */
 
-%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName
+%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName 
+
+
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -274,7 +284,10 @@ PackageClause :
 
 PackageName :
 						T_ID
-						{strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL);}
+						{	
+							strcpy(value.name, $1); 
+							$$ = makeNode(ID, value, NULL, NULL);
+						}
 ;
 
 /* Import */
@@ -305,52 +318,58 @@ ImportSpec :
 
 /* Types */
 Type :
-		 TypeName 
-		 {$$ = $1;}
-		 /* | TypeLiteral  */
-		 | '(' Type ')'
-		 {$$ = $2;}
+		 TypeName { $$ = $1; }
+		 | '(' Type ')' { $$ = $2; }
 ;
 
 TypeName :
-				 P_TYPE
-				 {strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL);}
+				P_TYPE
+				{ 
+				 	strcpy(value.name, $1); 
+				 	$$ = makeNode(ID, value, NULL, NULL);
+				}
 				 | QualifiedID
 				 {$$ = $1;}
-;
-/* TypeLiteral : */
-/* 						ArrayType  */
-/* 						| StructType  */
-/* 						| PointerType  */
-/* 						| SliceType  */
+/*  */
+/*
+TypeLiteral :
+						ArrayType 
+						| StructType 
+						| PointerType 
+						| SliceType */
 /* 						| FunctionType  */
 /* 						| InterfaceType  */
 /* 						| MapType  */
 /* 						| ChannelType */
-/* ; */
+
 
 QualifiedID :
 						PackageName '.' T_ID
-						{strcpy(value.name, $1->value.name); strcat(value.name, "."); strcat(value.name, $3); $$ = makeNode(ID, value, NULL, NULL);}
+						{	
+							value.name[0] = 0; 
+							strcat(value.name, $1->value.name); 
+							strcat(value.name, "."); 
+							strcat(value.name, $3); 
+							$$ = makeNode(ID, value, NULL, NULL);
+						}
 ;
 
-/* ArrayType   : */
-/* 						'[' ArrayLength ']' ElementType */
-/* ; */
-/* ArrayLength : */
-/* 						Expr */
-/* 						{$$ = $1;} */
-/* ; */
-/* ElementType : */
-/* 						Type */
-/* 						{$$ = $1;} */
-/* ; */
-/*  */
-/* SliceType : */
-/* 					'[' ']' ElementType */
-/* 						{$$ = $3;} */
-/* ; */
+/*
+ArrayType   :
+						'[' ArrayLength ']' ElementType
+;
+ArrayLength :
+						Expr
+;*/
+/*
+ElementType :
+						Type
+;
 
+SliceType :
+					'[' ']' ElementType
+;
+*/
 /* MapType     : */
 /* 						K_MAP '[' KeyType ']' ElementType */
 /* ; */
@@ -368,36 +387,7 @@ QualifiedID :
 /*  */
 /* ; */
 /*  */
-/* StructType    : */
-/* 							K_STRUCT '{' FieldDecls '}' */
-/* ; */
-/* FieldDecls    : */
-/* 							FieldDecl FieldDecls %prec NORMAL */
-/* 							| %empty %prec EMPTY */
-/* ; */
-/* FieldDecl     : */
-/* 							FieldType FieldSuff */
-/* ; */
-/* FieldSuff     : */
-/* 							Tag %prec NORMAL */
-/* 							| %empty %prec EMPTY */
-/* ; */
-/* FieldType     : */
-/* 							IdentifierList Type */
-/* 							| EmbeddedField */
-/* ; */
-/* EmbeddedField : */
-/* 							TypeName */
-/* 							| '*' TypeName */
-/* ; */
-/* Tag           : */
-/* 							L_STRING */
-/* ; */
-/*  */
-/* PointerType : */
-/* 						'*' Type */
-/* ; */
-/*  */
+
 /* FunctionType   : */
 /* 							 K_FUNC Signature */
 /* ; */
@@ -492,8 +482,35 @@ Receiver   :
 ;
 
 ConstDecl :
-					K_CONST ConstSpec
+					K_CONST ConstSpec 	{
+											if(stack_v.top != stack_i.top) {
+												yyerror("Imbalanced assignment");
+												YYERROR;
+											}
+											else {
+											
+												while(!stempty(stack_i)) {
+
+													insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v));
+												}
+												/*decFlag = 0;*/
+											} 
+										}
 					| K_CONST '(' ConstSpecs ')'
+										{
+											if(stack_v.top != stack_i.top) {
+												yyerror("Imbalanced assignment");
+												YYERROR;
+											}
+											else {
+											
+												while(!stempty(stack_i)) {
+
+													insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v));
+												}
+												/*decFlag = 0;*/
+											} 
+										}
 ;
 ConstSpecs : ConstSpec
 					 | ConstSpecs ConstSpec
@@ -535,23 +552,25 @@ VarDecl :
 				K_VAR VarSpecs 		{ /*decFlag = 1;*/
 										if(stack_v.top != stack_i.top) {
 											yyerror("Imbalanced assignment");
+											YYERROR;
 										}
 										else {
 											
 											while(!stempty(stack_i)) {
 
-												insert(pop(&stack_i), pop(&stack_t), pop(&stack_v));	
-											}
+												insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v));	
+											} 
 											/*decFlag = 0;*/
 										} 
 									}
 				| K_VAR '(' VarSpecs ')' { /*decFlag = 1;*/
 											if(stack_v.top != stack_i.top) {
-												yyerror("Imbalanced assignment");
+												yyerror("assignment mismatch");
+												YYERROR;
 											}
 											else {
 												while(!stempty(stack_i)) {
-													insert(pop(&stack_i), pop(&stack_t), pop(&stack_v));
+													insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v));
 												}
 											/*decFlag = 0;*/
 											}
@@ -569,13 +588,16 @@ VarSpec :
 						$$ = makeNode(OP, value, $1, $2);
 					} 
 					else {
-						printf("Not assigning\n");$$ = NULL;
+						printf("Not assigning\n");
+						$$ = NULL;
 					}
 				}
 ;
 VIdentifierListSuff :
 									 Type VIdentifierListTypeSuff
-									 {value.n = NULL; $$ = makeNode(TYPE, value, $1, $2);}
+									 {	
+									 	$$ = $2;									 							
+									 }
 									 | '=' ExprList
 									 {	
 									 	value.n = $2; $$ = makeNode(OP, value, NULL, NULL);
@@ -669,15 +691,15 @@ ExprList :
 				 			
     				if ($1->type == INT) {
     					sprintf(result, "%d", $1->value.i);
-    					push(&stack_t, "Int");
+    					push(&stack_t, "int");
     				}
     				if ($1->type == FLOAT) {
     					sprintf(result, "%f", $1->value.f);
-    					push(&stack_t, "Float");
+    					push(&stack_t, "float");
     				}
     				if ($1->type == STRING) {
     					strcpy(result, $1->value.str);
-    					push(&stack_t, "String");
+    					push(&stack_t, "string");
     				}
     							
     				push(&stack_v, result);
@@ -690,15 +712,15 @@ ExprList :
 				 	
     				if ($3->type == INT) {
     					sprintf(result, "%d", $3->value.i);
-    					push(&stack_t, "Int");
+    					push(&stack_t, "int");
     				}
     				if ($3->type == FLOAT) {
     					sprintf(result, "%f", $3->value.f);
-    					push(&stack_t, "Float");
+    					push(&stack_t, "float");
     				}
     				if ($3->type == STRING) {
     					strcpy(result, $3->value.str);
-    					push(&stack_t, "Float");
+    					push(&stack_t, "string");
     				}
     						
     				push(&stack_v, result);
@@ -898,7 +920,7 @@ OperandName :
 
 /* Blocks and Statements */
 Block :
-			'{' StatementList '}'
+			'{' {push(&stack_scope, base)} StatementList {pop(&stack_scope)}'}'
 ;
 StatementList :
 							StatementList Statement %prec NORMAL
@@ -942,9 +964,37 @@ IncDecStmt :
 
 Assignment :
 					 ExprList '=' ExprList
-					 {printf("started\n"); value.op[0] = '='; value.op[1] = 0; printf("Operator: %s\n", value.op); $$ = makeNode(OP, value, $1, $3);}
+					 {	printf("started\n"); 
+					 	value.op[0] = '='; 
+					 	value.op[1] = 0; 
+					 	printf("Operator: %s\n", value.op); 
+					 	$$ = makeNode(OP, value, $1, $3);
+						strcpy(result, search($1->value.name));
+
+						if(strcmp(result, "int") == 0 && $3->type == INT) {
+							sprintf(result, "%d", $3->value.i);
+					 		update($1->value.name, "int", result);
+						}
+
+					 	else if(strcmp(result, "float") == 0 && $3->type == FLOAT) {
+					 		sprintf(result, "%f", $3->value.f);
+					 		update($1->value.name, "int", result);
+					 	}	
+
+					 	else if(strcmp(result, "string") == 0 && $3->type == STRING)
+					 		update($1->value.name, "int", $3->value.str);
+
+					 	else {
+					 		yyerror("Error: type mismatched assignment");
+					 		YYERROR;
+					 	}
+
+					 }
 					 | Expr assign_op Expr
-					 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
+					 {	
+					 	strcpy(value.op, $2->value.op); 
+					 	$$ = makeNode(OP, value, $1, $3);
+					 }
 ;
 
 ShortVarDecl :
@@ -1014,16 +1064,19 @@ ReturnStmt :
 extern int yylineno;
 
 void yyerror(char const* error) {
-	fprintf(stderr, "%d: %s\n", yylineno, error)
-;
+	fprintf(stderr, "%d: %s\n", yylineno, error);
 }
 
 int main()
 {
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
-	yydebug = 1;
-	yyparse();
+
+	/* yydebug = 1; */
+	if ( yyparse() != 0){
+		printf("BUILD FAILED...!!\n\n");
+		exit(1);
+	}
 
 	printf("\n\n\n");
 	printf("---------------------------------Symbol Table---------------------------------\n\n");
