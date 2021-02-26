@@ -30,8 +30,9 @@ stack stack_v = {.top = -1};
 stack stack_t = {.top = -1};
 stack stack_scope = {.top = -1};
 
-char result[20];
 
+char result[20];
+char Tflag[20];
 
 int stfull(stack st,int size) {
 	if (st.top >= size - 1)
@@ -72,55 +73,57 @@ int hash1(char *token) {
 
 int check(char *token) {
 				
-				int index1 = hash1(token); 
-				int i = 0;
-				while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token) != 0 )
-								i++;
+	int index1 = hash1(token); 
+	int i = 0;
+	while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token) != 0 )
+		i++;
 
-				if ( i == TABLE_SIZE )
-								return 1;
-				else
-								return index1 + i;
+	if ( i == TABLE_SIZE )
+		return 1;
+	else
+		return index1 + i;
 
 }
 
 
-void insert(char type, char *token, char *dtype, char *value) {
+void insert(char type, char *token, char *dtype, char *value, char *scope) {
 
-  if (check(token) != 1) {
-  	yyerror("variable is redeclared");
-    /*printf("Error: %s is redeclared..!\n", token);
-    exit(0);*/
-    return;
-  }
-  int index = hash1(token);
+	if (check(token) != 1) {
+		yyerror("variable is redeclared");
+    	/*printf("Error: %s is redeclared..!\n", token);
+    	exit(0);*/
+    	return;
+  	}
+  	int index = hash1(token);
 
-  if (hashTable[index].hcode != -1) {
+  	if (hashTable[index].hcode != -1) {
 
-    int i = 1;
-    while (1) {
-      int newIndex = (index + i) % TABLE_SIZE;
+	    int i = 1;
+		while (1) {
+			int newIndex = (index + i) % TABLE_SIZE;
 
-      if (hashTable[newIndex].hcode == -1) {
+			if (hashTable[newIndex].hcode == -1) {
 
-        strcpy(hashTable[newIndex].name, token);
-        strcpy(hashTable[newIndex].dtype, dtype);
-        strcpy(hashTable[newIndex].value, value);
-        hashTable[newIndex].type = type;
-        hashTable[newIndex].hcode = 1;
-        break;
-      }
-      i++;
-    }
-  }
+				strcpy(hashTable[newIndex].name, token);
+				strcpy(hashTable[newIndex].dtype, dtype);
+				strcpy(hashTable[newIndex].value, value);
+				strcpy(hashTable[newIndex].scope, scope);
+				hashTable[newIndex].type = type;
+				hashTable[newIndex].hcode = 1;
+				break;
+			}
+			i++;
+		}
+	}
 
-  else {
-    strcpy(hashTable[index].name, token);
-    strcpy(hashTable[index].dtype, dtype);
-    strcpy(hashTable[index].value, value);
-    hashTable[index].type = type;
-    hashTable[index].hcode = 1;
-  }
+	else {
+		strcpy(hashTable[index].name, token);
+		strcpy(hashTable[index].dtype, dtype);
+		strcpy(hashTable[index].value, value);
+		strcpy(hashTable[index].scope, scope);
+		hashTable[index].type = type;
+		hashTable[index].hcode = 1;
+	}
 }
 char * search(char *token) {
 
@@ -161,14 +164,16 @@ void update(char *token, char *dtype, char *value) {
 void disp_symtbl() {
 
 	int base = 1000;
-	printf("%s\t%s\t\t%s\t\t%s\n","Name", "Type","Data Type", "Value");
+	printf("%s\t%s\t\t%s\t\t%s\t\t%s\n","Name", "Type","Data Type", "Value", "Scope");
 
 	for(int i=0; i<TABLE_SIZE; i++) {
 		if(hashTable[i].hcode != -1 )
-			printf("%s\t%c\t\t%s\t\t\t%s\n",hashTable[i].name, hashTable[i].type, hashTable[i].dtype, hashTable[i].value);
+			printf("%s\t%c\t\t%s\t\t\t%s\t\t%s\n",hashTable[i].name, hashTable[i].type, hashTable[i].dtype, hashTable[i].value, hashTable[i].scope);
 		}
 
 }
+
+
 
 
 %}
@@ -325,7 +330,7 @@ Type :
 TypeName :
 				P_TYPE
 				{ 
-				 	strcpy(value.name, $1); 
+				 	strcpy(value.name, $1);
 				 	$$ = makeNode(ID, value, NULL, NULL);
 				}
 				 | QualifiedID
@@ -483,33 +488,49 @@ Receiver   :
 
 ConstDecl :
 					K_CONST ConstSpec 	{
-											if(stack_v.top != stack_i.top) {
+											if(stack_v.top != stack_i.top && stack_v.top != -1) {
 												yyerror("Imbalanced assignment");
 												YYERROR;
 											}
 											else {
-											
-												while(!stempty(stack_i)) {
+												if (stack_v.top == -1){
+													while(!stempty(stack_i)) {
 
-													insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v));
+														insert('c', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
+
+													}
 												}
-												/*decFlag = 0;*/
+												else {
+													while(!stempty(stack_i)) {
+
+														insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+
+													}
+												}
 											} 
 										}
 					| K_CONST '(' ConstSpecs ')'
 										{
-											if(stack_v.top != stack_i.top) {
+											if(stack_v.top != stack_i.top && stack_v.top != -1) {
 												yyerror("Imbalanced assignment");
 												YYERROR;
 											}
 											else {
-											
-												while(!stempty(stack_i)) {
+												if (stack_v.top == -1){
+													while(!stempty(stack_i)) {
 
-													insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v));
+														insert('c', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
+
+													}
 												}
-												/*decFlag = 0;*/
-											} 
+												else {
+													while(!stempty(stack_i)) {
+
+														insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+
+													}
+												}
+											}  
 										}
 ;
 ConstSpecs : ConstSpec
@@ -549,31 +570,49 @@ TypeDef :
 ;
 
 VarDecl :
-				K_VAR VarSpecs 		{ /*decFlag = 1;*/
-										if(stack_v.top != stack_i.top) {
-											yyerror("Imbalanced assignment");
-											YYERROR;
-										}
-										else {
-											
-											while(!stempty(stack_i)) {
-
-												insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v));	
-											} 
-											/*decFlag = 0;*/
-										} 
-									}
-				| K_VAR '(' VarSpecs ')' { /*decFlag = 1;*/
-											if(stack_v.top != stack_i.top) {
-												yyerror("assignment mismatch");
+				K_VAR VarSpecs 		{ 
+										if(stack_v.top != stack_i.top && stack_v.top != -1) {
+												yyerror("Imbalanced assignment");
 												YYERROR;
 											}
 											else {
-												while(!stempty(stack_i)) {
-													insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v));
+												if (stack_v.top == -1){
+													while(!stempty(stack_i)) {
+
+														insert('v', pop(&stack_i), Tflag, "NULL", stack_scope.s[stack_scope.top]);
+
+													}
 												}
-											/*decFlag = 0;*/
+												else {
+													while(!stempty(stack_i)) {
+
+														insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+
+													}
+												}
+											} 
+									}
+				| K_VAR '(' VarSpecs ')' { 
+											if(stack_v.top != stack_i.top && stack_v.top != -1) {
+												yyerror("Imbalanced assignment");
+												YYERROR;
 											}
+											else {
+												if (stack_v.top == -1){
+													while(!stempty(stack_i)) {
+
+														insert('v', pop(&stack_i), Tflag, "NULL", stack_scope.s[stack_scope.top]);
+
+													}
+												}
+												else {
+													while(!stempty(stack_i)) {
+
+														insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+
+													}
+												}
+											} 
 										}  
 ;
 VarSpecs : VarSpec
@@ -596,25 +635,13 @@ VarSpec :
 VIdentifierListSuff :
 									 Type VIdentifierListTypeSuff
 									 {	
-									 	$$ = $2;									 							
+									 	$$ = $2;
+									 	strcpy(Tflag, $1->value.name);			 							
 									 }
 									 | '=' ExprList
 									 {	
-									 	value.n = $2; $$ = makeNode(OP, value, NULL, NULL);
-
-									 	/*
-									 	if(stack_v.top != stack_i.top) {
-											yyerror("Imbalanced assignment");
-										}
-										else {
-											
-											while(!stempty(stack_i)) {
-
-												update(pop(&stack_i), pop(&stack_t), pop(&stack_v));	
-											}
-											decFlag = 0;
-										}
-										*/
+									 	value.n = $2; 
+									 	$$ = makeNode(OP, value, NULL, NULL);									
 									 }
 ;
 VIdentifierListTypeSuff :
@@ -622,65 +649,31 @@ VIdentifierListTypeSuff :
 											 {	
 											 	value.n = $2; 
 											 	$$ = makeNode(OP, value, NULL, NULL);
-
-											 	/*
-											 	if(stack_v.top != stack_i.top) {
-											 		yyerror("Imbalanced assignment");
-											 	}
-											 	else {
-											 		int t = stack_i.top;
-											 		while(!stempty(stack_i)) {
-
-														update(pop(&stack_i), pop(&stack_t), pop(&stack_v));	
-													}
-													stack_i.top = t;
-													decFlag = 0;
-
-											 	}
-											 	*/
 											 }
 											 | %empty %prec EMPTY 
 											 	{
 											  		$$ = NULL; 
-											  		/*decFlag = 0;*/
+
 												}
 ;
 
 IdentifierList :
-							 T_ID
-							 {	
+							T_ID
+							{	
 							 	strcpy(value.name, $1); 
 							 	$$ = makeNode(ID, value, NULL, NULL); 
 							 	/*printf("Type: %d Value: %s\n", $$->type, $$->value.name);*/
 								
 								push(&stack_i, value.name);
-								/*
-								if (decFlag == 1) {
-									insert($$->value.name, "NULL", "NULL");
-							 		push(&stack_i, $$->value.name);
-							 	}
-							 	else {
-							 		search($$->value.name);
-							 	}
-							 	*/
-
-							 }
-							 | IdentifierList ',' T_ID
-							 {	
+								
+							}
+							| IdentifierList ',' T_ID
+							{	
 							 	strcpy(value.name, $3); 
 							 	$$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), $1);
 
 							 	push(&stack_i, value.name);
-							 	/*
-							 	if (decFlag == 1) {
-									insert(value.name, "NULL", "NULL");
-							 		push(&stack_i, value.name);
-							 	}
-							 	else {
-							 		search(value.name);
-							 	}
-							 	*/
-							 }
+							}
 ;
 
 /* Expressions */
@@ -920,7 +913,8 @@ OperandName :
 
 /* Blocks and Statements */
 Block :
-			'{' {push(&stack_scope, base)} StatementList {pop(&stack_scope)}'}'
+			'{' {	sprintf(result, "%d", base++);
+					push(&stack_scope, result);} StatementList { pop(&stack_scope); }'}'
 ;
 StatementList :
 							StatementList Statement %prec NORMAL
@@ -964,7 +958,8 @@ IncDecStmt :
 
 Assignment :
 					 ExprList '=' ExprList
-					 {	printf("started\n"); 
+					 {	
+					 	printf("started\n"); 
 					 	value.op[0] = '='; 
 					 	value.op[1] = 0; 
 					 	printf("Operator: %s\n", value.op); 
@@ -997,8 +992,30 @@ Assignment :
 					 }
 ;
 
-ShortVarDecl :
-						 IdentifierList O_ASSGN ExprList
+ShortVarDecl :		IdentifierList O_ASSGN ExprList 
+					{
+						if(stack_v.top != stack_i.top && stack_v.top != -1) {
+							yyerror("Imbalanced assignment");
+							YYERROR;
+						}
+						else {
+							if (stack_v.top == -1){
+								while(!stempty(stack_i)) {
+
+									insert('v', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
+
+								}
+							}
+							else {
+								while(!stempty(stack_i)) {
+
+									insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+
+								}
+							}
+							 
+						}
+					}
 ;
 
 ForStmt : K_FOR
@@ -1071,6 +1088,10 @@ int main()
 {
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
+
+	sprintf(result, "%d", base);
+	base++;
+	push(&stack_scope, result);
 
 	/* yydebug = 1; */
 	if ( yyparse() != 0){
