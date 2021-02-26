@@ -13,6 +13,7 @@
 #define NIL 8
 #define BOOL 9
 #define FUNC 10
+#define TYPE 11
 
 struct node;
 

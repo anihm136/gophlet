@@ -157,7 +157,7 @@ void update(char *token, char *type, char *value) {
 %start SourceFile
 /* %expect 11 */
 
-%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff
+%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -219,7 +219,7 @@ void update(char *token, char *type, char *value) {
 %token <char const *> O_AMPXOR
 %token <char const *> O_AMPXOREQ
 
-%token P_TYPE
+%token <char const *> P_TYPE
 %token <char const *> P_CONST
 %token P_NIL
 %token <char const *> P_FUNC
@@ -292,44 +292,50 @@ ImportSpec :
 /* Types */
 Type :
 		 TypeName 
-		 | TypeLiteral 
+		 {$$ = $1;}
+		 /* | TypeLiteral  */
 		 | '(' Type ')'
+		 {$$ = $2;}
 ;
 
 TypeName :
 				 P_TYPE
+				 {strcpy(value.name, $1); $$ = makeNode(ID, value, NULL, NULL);}
 				 | QualifiedID
+				 {$$ = $1;}
 ;
-/*  */
-TypeLiteral :
-						ArrayType 
-						| StructType 
-						| PointerType 
-						| SliceType 
+/* TypeLiteral : */
+/* 						ArrayType  */
+/* 						| StructType  */
+/* 						| PointerType  */
+/* 						| SliceType  */
 /* 						| FunctionType  */
 /* 						| InterfaceType  */
 /* 						| MapType  */
 /* 						| ChannelType */
-;
+/* ; */
 
 QualifiedID :
 						PackageName '.' T_ID
-						{value.name[0] = 0; strcat(value.name, $1->value.name); strcat(value.name, "."); strcat(value.name, $3); $$ = makeNode(ID, value, NULL, NULL);}
+						{strcpy(value.name, $1->value.name); strcat(value.name, "."); strcat(value.name, $3); $$ = makeNode(ID, value, NULL, NULL);}
 ;
 
-ArrayType   :
-						'[' ArrayLength ']' ElementType
-;
-ArrayLength :
-						Expr
-;
-ElementType :
-						Type
-;
-
-SliceType :
-					'[' ']' ElementType
-;
+/* ArrayType   : */
+/* 						'[' ArrayLength ']' ElementType */
+/* ; */
+/* ArrayLength : */
+/* 						Expr */
+/* 						{$$ = $1;} */
+/* ; */
+/* ElementType : */
+/* 						Type */
+/* 						{$$ = $1;} */
+/* ; */
+/*  */
+/* SliceType : */
+/* 					'[' ']' ElementType */
+/* 						{$$ = $3;} */
+/* ; */
 
 /* MapType     : */
 /* 						K_MAP '[' KeyType ']' ElementType */
@@ -348,36 +354,36 @@ SliceType :
 /*  */
 /* ; */
 /*  */
-StructType    :
-							K_STRUCT '{' FieldDecls '}'
-;
-FieldDecls    :
-							FieldDecl FieldDecls %prec NORMAL
-							| %empty %prec EMPTY
-;
-FieldDecl     :
-							FieldType FieldSuff
-;
-FieldSuff     :
-							Tag %prec NORMAL
-							| %empty %prec EMPTY
-;
-FieldType     :
-							IdentifierList Type
-							| EmbeddedField
-;
-EmbeddedField :
-							TypeName
-							| '*' TypeName
-;
-Tag           :
-							L_STRING
-;
-
-PointerType :
-						'*' Type
-;
-
+/* StructType    : */
+/* 							K_STRUCT '{' FieldDecls '}' */
+/* ; */
+/* FieldDecls    : */
+/* 							FieldDecl FieldDecls %prec NORMAL */
+/* 							| %empty %prec EMPTY */
+/* ; */
+/* FieldDecl     : */
+/* 							FieldType FieldSuff */
+/* ; */
+/* FieldSuff     : */
+/* 							Tag %prec NORMAL */
+/* 							| %empty %prec EMPTY */
+/* ; */
+/* FieldType     : */
+/* 							IdentifierList Type */
+/* 							| EmbeddedField */
+/* ; */
+/* EmbeddedField : */
+/* 							TypeName */
+/* 							| '*' TypeName */
+/* ; */
+/* Tag           : */
+/* 							L_STRING */
+/* ; */
+/*  */
+/* PointerType : */
+/* 						'*' Type */
+/* ; */
+/*  */
 /* FunctionType   : */
 /* 							 K_FUNC Signature */
 /* ; */
@@ -524,7 +530,7 @@ VarSpec :
 ;
 VIdentifierListSuff :
 									 Type VIdentifierListTypeSuff
-									 {$$ = $2;}
+									 {value.n = NULL; $$ = makeNode(TYPE, value, $1, $2);}
 									 | '=' ExprList
 									 {value.n = $2; $$ = makeNode(OP, value, NULL, NULL);}
 ;
@@ -868,7 +874,7 @@ int main()
 {
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
-	/* yydebug = 1; */
+	yydebug = 1;
 	yyparse();
 	return 0;
 }
