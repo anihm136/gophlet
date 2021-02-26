@@ -23,11 +23,25 @@ import (
 )
 
 func main() {
-     var a,c = 10
-     var b int
-     for i := 1; i < 10; i++ {
-       i = 1+2*3-4/5
-       j := 5.6
-       k = i * j
+     var a,c = 10, 30
+
+     for i := 1; i < 5; i++ {
+          var z = "variable"
+          if i%2 != 0 { 
+          
+               const l,m = 1.2, "done"
+          }
+
      }
+
+     x := 100
+ 
+     if x == 100 {
+          var p = 149
+          
+     } else {
+          const q ,r = "159", 10
+      }
+          
+       
 }
