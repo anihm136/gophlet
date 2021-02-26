@@ -23,7 +23,8 @@ import (
 )
 
 func main() {
-     var a = 10
+     var a,c = 10
+     var b int
      for i := 1; i < 10; i++ {
        i = 1+2*3-4/5
        j := 5.6
