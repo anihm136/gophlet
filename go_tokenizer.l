@@ -195,7 +195,7 @@ block_comment "/*"[^*]*"*"+([^*/][^*]*"*"+)*"/"
 {keyword_return} {return K_RETURN;}
 {keyword_var} {return K_VAR;}
 {predeclared_type} {yylval.P_TYPE = strdup(yytext); return P_TYPE;}
-{predeclared_const} return P_CONST;
+{predeclared_const} {yylval.P_CONST = strdup(yytext); return P_CONST;}
 {predeclared_zero} return P_NIL;
 {predeclared_functions} {yylval.P_FUNC = strdup(yytext); return P_FUNC;}
 {identifier} {yylval.T_ID = strdup(yytext); return T_ID;}

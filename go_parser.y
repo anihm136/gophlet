@@ -6,21 +6,24 @@ int TABLE_SIZE = 10009;
 union NodeVal value;
 
 int base = 1000;
+int scope_depth = 0;
+int scope_id = 0;
 
 typedef struct symbol_table {
-    char name[31];
-    char dtype[10];
-    char type;
-    char value[20];
-    char scope[10];
-    int hcode;
-  }ST;
-  
- ST hashTable[10009];
+  char name[31];
+  char dtype[10];
+  char type;
+  char value[20];
+	int scope_depth;
+	int scope_id;
+  int hcode;
+} ST;
+
+ST hashTable[10009];
 
 struct Stack {
-   char s[25][25];
-   int top;
+  char s[25][25];
+  int top;
 };
 
 typedef struct Stack stack;
@@ -29,152 +32,207 @@ stack stack_i = {.top = -1};
 stack stack_v = {.top = -1};
 stack stack_t = {.top = -1};
 stack stack_scope = {.top = -1};
-
+stack if_cond = {.top = -1};
 
 char result[20];
-char Tflag[20];
+char Tflag[20] = "";
 
-int stfull(stack st,int size) {
-	if (st.top >= size - 1)
-		return 1;
-	else
-		return 0;
+int tid = 0;
+int lid = 0;
+char temp[10];
+char label[10];
+FILE* icfile;
+
+void newtemp() {
+	sprintf(temp, "_t%d", tid++);
 }
 
-void push(stack *p_st,char *item) {
-	p_st->top++;
-	strcpy(p_st->s[p_st->top], item);
+void newlabel() {
+	sprintf(label, "L%d", lid++);
+}
+
+int stfull(stack st, int size) {
+  if (st.top >= size - 1)
+    return 1;
+  else
+    return 0;
+}
+
+void push(stack *p_st, char *item) {
+  p_st->top++;
+  strcpy(p_st->s[p_st->top], item);
 }
 
 int stempty(stack st) {
-	if (st.top == -1)
-		return 1;
-	else
-		return 0;
+  if (st.top == -1)
+    return 1;
+  else
+    return 0;
 }
 
-char * pop(stack *p_st) {
-	char *item;
-	item = p_st->s[p_st->top];
-	p_st->top--;
-	return (item);
+char *pop(stack *p_st) {
+  char *item;
+  item = p_st->s[p_st->top];
+  p_st->top--;
+  return (item);
 }
 
 int hash1(char *token) {
-				
-	int hash = 0;
-	for (int i = 0; token[i] != '\0'; i++) { 
-		hash = ( 256 * hash + token[i] ) % 1000000009; 
-	}
-	hash = hash % TABLE_SIZE;
-	return hash;
-
+  int hash = 0;
+  for (int i = 0; token[i] != '\0'; i++) {
+    hash = (256 * hash + token[i]) % 1000000009;
+  }
+  hash = hash % TABLE_SIZE;
+  return hash;
 }
 
 int check(char *token) {
-				
-	int index1 = hash1(token); 
-	int i = 0;
-	while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token) != 0 )
-		i++;
+  int index1 = hash1(token);
+  int i = 0;
+  while (i < TABLE_SIZE &&
+         !(strcmp(hashTable[(index1 + i) % TABLE_SIZE].name, token) == 0 &&
+				 hashTable[(index1 + i) % TABLE_SIZE].scope_depth == scope_depth &&
+				 hashTable[(index1 + i) % TABLE_SIZE].scope_id == scope_id))
+    i++;
 
-	if ( i == TABLE_SIZE )
-		return 1;
-	else
-		return index1 + i;
-
+  if (i == TABLE_SIZE)
+    return 1;
+  else
+    return index1 + i;
 }
 
+void insert(char type, char *token, char *dtype, char *value, int scope_depth, int scope_id) {
+  if (check(token) != 1) {
+    yyerror("variable is redeclared");
+		exit(1);
+  }
+  int index = hash1(token);
 
-void insert(char type, char *token, char *dtype, char *value, char *scope) {
+  if (hashTable[index].hcode != -1) {
 
-	if (check(token) != 1) {
-		yyerror("variable is redeclared");
-    	/*printf("Error: %s is redeclared..!\n", token);
-    	exit(0);*/
-    	return;
-  	}
-  	int index = hash1(token);
+    int i = 1;
+    while (1) {
+      int newIndex = (index + i) % TABLE_SIZE;
 
-  	if (hashTable[index].hcode != -1) {
+      if (hashTable[newIndex].hcode == -1) {
 
-	    int i = 1;
-		while (1) {
-			int newIndex = (index + i) % TABLE_SIZE;
-
-			if (hashTable[newIndex].hcode == -1) {
-
-				strcpy(hashTable[newIndex].name, token);
-				strcpy(hashTable[newIndex].dtype, dtype);
-				strcpy(hashTable[newIndex].value, value);
-				strcpy(hashTable[newIndex].scope, scope);
-				hashTable[newIndex].type = type;
-				hashTable[newIndex].hcode = 1;
-				break;
-			}
-			i++;
-		}
-	}
-
-	else {
-		strcpy(hashTable[index].name, token);
-		strcpy(hashTable[index].dtype, dtype);
-		strcpy(hashTable[index].value, value);
-		strcpy(hashTable[index].scope, scope);
-		hashTable[index].type = type;
-		hashTable[index].hcode = 1;
-	}
+        strcpy(hashTable[newIndex].name, token);
+        strcpy(hashTable[newIndex].dtype, dtype);
+        strcpy(hashTable[newIndex].value, value);
+				hashTable[newIndex].scope_depth = scope_depth;
+				hashTable[newIndex].scope_id = scope_id;
+        hashTable[newIndex].type = type;
+        hashTable[newIndex].hcode = 1;
+        break;
+      }
+      i++;
+    }
+  }
+  else {
+    strcpy(hashTable[index].name, token);
+    strcpy(hashTable[index].dtype, dtype);
+    strcpy(hashTable[index].value, value);
+		hashTable[index].scope_depth = scope_depth;
+		hashTable[index].scope_id = scope_id;
+    hashTable[index].type = type;
+    hashTable[index].hcode = 1;
+  }
 }
-char * search(char *token) {
-
-	int index1 = hash1(token); 
-	int i = 0;
-	while ( i < TABLE_SIZE && strcmp(hashTable[( index1 + i ) % TABLE_SIZE].name, token)!=0)
-		i++;
-	if ( i == TABLE_SIZE ) {
-		printf("Error: %s is not defined\n", token);
-		exit(0);
-	}
-	else
-		return hashTable[index1 + i].dtype;
+char *search(char *token) {
+  int index1 = hash1(token);
+  int i = 0;
+  while (i < TABLE_SIZE &&
+         strcmp(hashTable[(index1 + i) % TABLE_SIZE].name, token) != 0)
+    i++;
+  if (i == TABLE_SIZE) {
+		return NULL;
+  } else
+    return hashTable[index1 + i].dtype;
 }
 
+int max_id_at_depth[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+int next_id(int scope_depth) {
+	int scope_id = -1;
+	if (scope_depth == 1) {
+		scope_id = 1;
+	} else {
+		scope_id = ++max_id_at_depth[scope_depth];
+	}
+	return scope_id;
+}
+
+int restore_id(int scope_depth) {
+	int scope_id = -1;
+	if (scope_depth == 1) {
+		scope_id = 1;
+	} else {
+		scope_id = max_id_at_depth[scope_depth];
+	}
+	return scope_id;
+}
 
 void update(char *token, char *dtype, char *value) {
-	int index = check(token);
-	if ( index == 1 ) {
-		printf("Error: %s is not defined\n", token);
-		exit(0);
-		return;
-	}
-	
-	if (hashTable[index].type == 'c') {
-		printf("Error: cannot assign to %s (declared const)", token);
-		exit(0);
-		return;
-	}
-	else {
-		if (strcmp(hashTable[index].value, "NULL") != 0)
-			strcpy(hashTable[index].value, value);
-		if (strcmp(hashTable[index].dtype, "NULL") != 0)
-			strcpy(hashTable[index].dtype, dtype);
-	}
+  int index = check(token);
+  if (index == 1) {
+		char error[100];
+		sprintf(error, "%s is not defined", token);
+    yyerror(error);
+    exit(1);
+  }
+
+  if (hashTable[index].type == 'c') {
+		char error[100];
+		sprintf(error, "cannot assign to %s (declared const)", token);
+		yyerror(error);
+    exit(1);
+  } else {
+    if (strcmp(hashTable[index].value, "NULL") != 0)
+      strcpy(hashTable[index].value, value);
+    if (strcmp(hashTable[index].dtype, "NULL") != 0)
+      strcpy(hashTable[index].dtype, dtype);
+  }
 }
 
 void disp_symtbl() {
+  int base = 1000;
+  printf("%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\n", "Name", "Type", "Data Type", "Value",
+         "Scope Depth", "Scope ID");
 
-	int base = 1000;
-	printf("%s\t%s\t\t%s\t\t%s\t\t%s\n","Name", "Type","Data Type", "Value", "Scope");
-
-	for(int i=0; i<TABLE_SIZE; i++) {
-		if(hashTable[i].hcode != -1 )
-			printf("%s\t%c\t\t%s\t\t\t%s\t\t%s\n",hashTable[i].name, hashTable[i].type, hashTable[i].dtype, hashTable[i].value, hashTable[i].scope);
-		}
-
+  for (int i = 0; i < TABLE_SIZE; i++) {
+    if (hashTable[i].hcode != -1)
+      printf("%s\t%c\t\t%s\t\t\t%s\t\t%d\t\t%d\n", hashTable[i].name,
+             hashTable[i].type, hashTable[i].dtype, hashTable[i].value,
+             hashTable[i].scope_depth, hashTable[i].scope_id);
+  }
 }
 
-
-
+void doAssign(char decltype, Node *lhs, Node *rhs) {
+	if (lhs==NULL && rhs==NULL) {
+		Tflag[0] = 0;
+		return;
+	}
+	if (seqLen(lhs) != seqLen(rhs) && seqLen(rhs) != 0) {
+		yyerror("Imbalanced assignment");
+		exit(1);
+	} else {
+		if (seqLen(rhs) == 0){
+			insert(decltype, pop(&stack_i), Tflag, "NULL", scope_depth, scope_id);
+		} else {
+			if (Tflag[0] != 0) {
+				if (strcmp(pop(&stack_t),Tflag) != 0) {
+					yyerror("Mismatch between declared type and assigned value");
+					exit(1);
+				}
+				insert(decltype, pop(&stack_i), Tflag, pop(&stack_v), scope_depth, scope_id);
+			} else {
+				insert(decltype, pop(&stack_i), pop(&stack_t), pop(&stack_v), scope_depth, scope_id);
+			}
+		}
+		fprintf(icfile, "%s = %s\n", lhs->lop->value.name, rhs->lop->loc);
+	} 
+	doAssign(decltype, lhs->rop, rhs->rop);
+}
 
 %}
 
@@ -184,7 +242,8 @@ void disp_symtbl() {
 %start SourceFile
 /* %expect 11 */
 
-%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName 
+%type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName CIdentifierListSuff ConstSpec
+%type <IfNode *> IfStmt OptionalElse
 
 
 
@@ -487,28 +546,7 @@ Receiver   :
 ;
 
 ConstDecl :
-					K_CONST ConstSpec 	{
-											if(stack_v.top != stack_i.top && stack_v.top != -1) {
-												yyerror("Imbalanced assignment");
-												YYERROR;
-											}
-											else {
-												if (stack_v.top == -1){
-													while(!stempty(stack_i)) {
-
-														insert('c', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
-
-													}
-												}
-												else {
-													while(!stempty(stack_i)) {
-
-														insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
-
-													}
-												}
-											} 
-										}
+					K_CONST ConstSpec
 					| K_CONST '(' ConstSpecs ')'
 										{
 											if(stack_v.top != stack_i.top && stack_v.top != -1) {
@@ -519,14 +557,14 @@ ConstDecl :
 												if (stack_v.top == -1){
 													while(!stempty(stack_i)) {
 
-														insert('c', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
+														insert('c', pop(&stack_i), pop(&stack_t), "NULL", scope_depth, scope_id);
 
 													}
 												}
 												else {
 													while(!stempty(stack_i)) {
 
-														insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+														insert('c', pop(&stack_i), pop(&stack_t), pop(&stack_v), scope_depth, scope_id);
 
 													}
 												}
@@ -538,12 +576,24 @@ ConstSpecs : ConstSpec
 ;
 ConstSpec :
 					IdentifierList CIdentifierListSuff
+				{ 
+					value.op[0] = '='; value.op[1] = 0; 
+					$$ = makeNode(OP, value, $1, $2);
+					doAssign('c', $1, $2->value.n);
+				}
 ;
 CIdentifierListSuff :
 										CIdentifierListSuffPre '=' ExprList
+									 {	
+									 	value.n = $3; 
+									 	$$ = makeNode(OP, value, NULL, NULL);
+									 }
 ;
 CIdentifierListSuffPre :
 											 Type %prec NORMAL
+											 {	
+												strcpy(Tflag, $1->value.name);
+											 }
 											 | %empty %prec EMPTY
 ;
 
@@ -570,28 +620,7 @@ TypeDef :
 ;
 
 VarDecl :
-				K_VAR VarSpec 		{ 
-										if(stack_v.top != stack_i.top && stack_v.top != -1) {
-												yyerror("Imbalanced assignment");
-												YYERROR;
-											}
-											else {
-												if (stack_v.top == -1){
-													while(!stempty(stack_i)) {
-
-														insert('v', pop(&stack_i), Tflag, "NULL", stack_scope.s[stack_scope.top]);
-
-													}
-												}
-												else {
-													while(!stempty(stack_i)) {
-
-														insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
-
-													}
-												}
-											} 
-									}
+				K_VAR VarSpec
 				| K_VAR '(' VarSpecs ')' { 
 											if(stack_v.top != stack_i.top && stack_v.top != -1) {
 												yyerror("Imbalanced assignment");
@@ -601,14 +630,14 @@ VarDecl :
 												if (stack_v.top == -1){
 													while(!stempty(stack_i)) {
 
-														insert('v', pop(&stack_i), Tflag, "NULL", stack_scope.s[stack_scope.top]);
+														insert('v', pop(&stack_i), Tflag, "NULL", scope_depth, scope_id);
 
 													}
 												}
 												else {
 													while(!stempty(stack_i)) {
 
-														insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
+														insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), scope_depth, scope_id);
 
 													}
 												}
@@ -622,12 +651,12 @@ VarSpec :
 				IdentifierList VIdentifierListSuff 
 				{ 
 					if($2) {
-						printf("Assigning to variables\nIds: %d Exprs: %d\n", seqLen($1), seqLen($2->value.n)); 
 						value.op[0] = '='; value.op[1] = 0; 
+						printf("Outside function: %d %d\n", seqLen($1), seqLen($2->value.n));
 						$$ = makeNode(OP, value, $1, $2);
+						doAssign('v', $1, $2->value.n);
 					} 
 					else {
-						printf("Not assigning\n");
 						$$ = NULL;
 					}
 				}
@@ -661,7 +690,7 @@ IdentifierList :
 							T_ID
 							{	
 							 	strcpy(value.name, $1); 
-							 	$$ = makeNode(ID, value, NULL, NULL); 
+							 	$$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), NULL); 
 							 	/*printf("Type: %d Value: %s\n", $$->type, $$->value.name);*/
 								
 								push(&stack_i, value.name);
@@ -670,7 +699,7 @@ IdentifierList :
 							| IdentifierList ',' T_ID
 							{	
 							 	strcpy(value.name, $3); 
-							 	$$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), $1);
+								$$ = makeNode(SEQ, value, makeNode(ID, value, NULL, NULL), $1);
 
 							 	push(&stack_i, value.name);
 							}
@@ -680,7 +709,7 @@ IdentifierList :
 ExprList :
 				Expr 	
 				{	
-				 	$$ = $1;
+					$$ = makeNode(SEQ, value, $1, NULL); 
 				 			
     				if ($1->type == INT) {
     					sprintf(result, "%d", $1->value.i);
@@ -700,7 +729,7 @@ ExprList :
 				 }
 				 | ExprList ',' Expr
 				 { 
-				 	$$ = makeNode(SEQ, value, $3, $1);
+					$$ = makeNode(SEQ, value, $3, $1);
 
 				 	
     				if ($3->type == INT) {
@@ -811,15 +840,46 @@ assign_op  :
 
 Expr :
 		 Expr O_LOR Expr
-		 {strcpy(value.op, $2); $$ = makeNode(OP, value, $1, $3);}
+		 {
+		 strcpy(value.op, $2);
+		 $$ = makeNode(OP, value, $1, $3);
+		 newtemp();
+		 fprintf(icfile, "%s = %s %s %s\n", temp, $1->loc, value.op, $3->loc);
+		 strcpy($$->loc, temp);
+		 }
 		 | Expr O_LAND Expr
-		 {strcpy(value.op, $2); $$ = makeNode(OP, value, $1, $3);}
+		 {
+		 strcpy(value.op, $2);
+		 $$ = makeNode(OP, value, $1, $3);
+		 newtemp();
+		 fprintf(icfile, "%s = %s %s %s\n", temp, $1->loc, value.op, $3->loc);
+		 strcpy($$->loc, temp);
+		 }
 		 | Expr rel_op Expr %prec O_EQ
-		 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
+		 {
+		 strcpy(value.op, $2->value.op);
+		 $$ = makeNode(OP, value, $1, $3);
+		 newtemp();
+		 fprintf(icfile, "%s = %s %s %s\n", temp, $1->loc, value.op, $3->loc);
+		 strcpy($$->loc, temp);
+		 printf("While setting: %s\n", $$->loc);
+		 }
 		 | Expr add_op Expr %prec '+'
-		 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
+		 {
+		 strcpy(value.op, $2->value.op);
+		 $$ = makeNode(OP, value, $1, $3);
+		 newtemp();
+		 fprintf(icfile, "%s = %s %s %s\n", temp, $1->loc, value.op, $3->loc);
+		 strcpy($$->loc, temp);
+		 }
 		 | Expr mul_op Expr %prec '-'
-		 {strcpy(value.op, $2->value.op); $$ = makeNode(OP, value, $1, $3);}
+		 {
+		 strcpy(value.op, $2->value.op);
+		 $$ = makeNode(OP, value, $1, $3);
+		 newtemp();
+		 fprintf(icfile, "%s = %s %s %s\n", temp, $1->loc, value.op, $3->loc);
+		 strcpy($$->loc, temp);
+		 }
 		 | UnaryExpr %prec P_UNARY
 		 {$$ = $1;}
 ;
@@ -827,9 +887,16 @@ UnaryExpr :
 					O_CHAN_DIR UnaryExpr
 					{strcpy(value.op, $1); $$ = makeNode(OP, value, $2, NULL);}
 					| unary_op UnaryExpr %prec P_UNARY
-					{strcpy(value.op, $1->value.op); $$ = makeNode(OP, value, $2, NULL);}
+					{
+					strcpy(value.op, $1->value.op);
+					$$ = makeNode(OP, value, $2, NULL);
+					strcpy($$->loc,getLoc($2));
+					newtemp();
+					fprintf(icfile, "%s = -%s\n", temp, $$->loc);
+					strcpy($$->loc, temp);
+					}
 					| PrimaryExpr
-					{$$ = $1;}
+					{$$ = $1; strcpy($$->loc,getLoc($1));}
 ;
 PrimaryExpr :
 						Operand
@@ -878,7 +945,7 @@ Operand     :
 						| '(' Expr ')'
 						{$$ = $2;}
 						| P_NIL
-						{value.n = NULL; $$ = makeNode(INT, value, NULL, NULL);}
+						{value.n = NULL; $$ = makeNode(NIL, value, NULL, NULL);}
 						| P_CONST
 						{value.b = strcmp($1, "true")==0 ? 1 : 0; $$ = makeNode(BOOL, value, NULL, NULL);}
 ;
@@ -913,8 +980,7 @@ OperandName :
 
 /* Blocks and Statements */
 Block :
-			'{' {	sprintf(result, "%d", base++);
-					push(&stack_scope, result);} StatementList { pop(&stack_scope); }'}'
+			'{' {++scope_depth; scope_id = next_id(scope_depth);} StatementList {--scope_depth; scope_id = restore_id(scope_depth);} '}'
 ;
 StatementList :
 							StatementList Statement %prec NORMAL
@@ -964,8 +1030,16 @@ Assignment :
 					 	value.op[1] = 0; 
 					 	printf("Operator: %s\n", value.op); 
 					 	$$ = makeNode(OP, value, $1, $3);
+						char* res = search($1->value.name);
+						if (res==NULL) {
+							char error[100];
+							sprintf(error, "%s is not defined", $1->value.name);
+							yyerror(error);
+							YYERROR;
+						}
 						strcpy(result, search($1->value.name));
 
+						printf("%s %d\n", result, $3->type);
 						if(strcmp(result, "int") == 0 && $3->type == INT) {
 							sprintf(result, "%d", $3->value.i);
 					 		update($1->value.name, "int", result);
@@ -994,27 +1068,7 @@ Assignment :
 
 ShortVarDecl : IdentifierList O_ASSGN ExprList
 					{
-						if(stack_v.top != stack_i.top && stack_v.top != -1) {
-							yyerror("Imbalanced assignment");
-							YYERROR;
-						}
-						else {
-							if (stack_v.top == -1){
-								while(!stempty(stack_i)) {
-
-									insert('v', pop(&stack_i), pop(&stack_t), "NULL", stack_scope.s[stack_scope.top]);
-
-								}
-							}
-							else {
-								while(!stempty(stack_i)) {
-
-									insert('v', pop(&stack_i), pop(&stack_t), pop(&stack_v), stack_scope.s[stack_scope.top]);
-
-								}
-							}
-							 
-						}
+						doAssign('v', $1, $3);
 					}
 ;
 
@@ -1060,7 +1114,7 @@ OptionalForRangePre :
 ;
 
 IfStmt : 
-			 K_IF /* OptionalStmt */ Expr Block OptionalElse
+			 K_IF/* OptionalStmt */ Expr {newlabel(); fprintf(icfile, "IFFALSE %s GOTO %s\n", $2->loc, label); strcpy($<IfNode>$.next, label);} Block { push(&if_cond, $2->loc); fprintf(icfile, "%s:\n", $<IfNode>3.next); } OptionalElse
 ;
 /* OptionalStmt :  */
 /* 						 SimpleStmt ';' */
@@ -1068,7 +1122,10 @@ IfStmt :
 /* ; */
 OptionalElse :
 						 K_ELSE IfStmt
-						 | K_ELSE Block
+						 | K_ELSE {newlabel(); fprintf(icfile, "IF %s GOTO %s\n", pop(&if_cond), label); strcpy($<IfNode>$.next, label);} Block
+							{
+								fprintf(icfile, "%s:\n", $<IfNode>2.next);
+							}
 						 | %empty
 ;
 
@@ -1079,13 +1136,14 @@ ReturnStmt :
 
 %%
 extern int yylineno;
-
+char codeline[100];
 void yyerror(char const* error) {
-	fprintf(stderr, "%d: %s\n", yylineno, error);
+	fprintf(stderr, "Syntax error in line %d: %s\n", yylineno, error);
 }
 
 int main()
 {
+	icfile = fopen("intermediate.txt", "w");
 	for(int i=0; i<TABLE_SIZE; i++)
 		hashTable[i].hcode = -1;
 

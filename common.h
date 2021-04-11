@@ -30,12 +30,19 @@ union NodeVal {
 typedef struct node {
 	int type;
 	union NodeVal value;
+	char loc[100];
 	struct node* lop;
 	struct node* rop;
 } Node;
 
+typedef struct ifnode {
+	char next[10];
+	char cond[100];
+} IfNode;
+
 Node *makeNode(int type, union NodeVal value, Node* lop, Node* rop);
 int seqLen(Node *seq);
+char* getLoc(Node *LiteralNode);
 
 int yylex();
 

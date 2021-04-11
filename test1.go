@@ -1,4 +1,4 @@
- /*
+/*
 Copyright 2014 Google Inc.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,23 +17,20 @@ package main
 
 import "fmt"
 
-
 const URL = "Global"
 
 func main() {
 
-    var a = "initial"	
+	var a = "initial"
 
-    var b, c int = 1, 2
-    
- var e int
-    d := 3.7
-    
-    
-	var i = 0 
-    for i < 3 { 
-       i += 2 
-       const e int = 10  
+	var b, c int = 1, 2
 
-    } 
+	var e int
+	d := 3.7
+
+	var i = 0
+	for i < 3 {
+		i += 2
+		const e int = 10
+	}
 }
