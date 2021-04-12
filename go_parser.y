@@ -26,6 +26,12 @@ struct Stack {
   int top;
 };
 
+typedef struct queue {
+  char s[25][200];
+  int front;
+	int back;
+} queue;
+
 typedef struct Stack stack;
 
 stack stack_i = {.top = -1};
@@ -33,6 +39,25 @@ stack stack_v = {.top = -1};
 stack stack_t = {.top = -1};
 stack stack_scope = {.top = -1};
 stack if_cond = {.top = -1};
+queue for_loc = {.front = -1, .back = -1};
+
+void add(queue *p_st, char *item) {
+	if (p_st->back==199) {
+		printf("Cannot insert into full queue\n");
+		exit(1);
+	}
+	strcpy(p_st->s[++p_st->back], item);
+}
+
+char *rem(queue *p_st) {
+	if (p_st->front==p_st->back) {
+		printf("Cannot remove from empty queue\n");
+		exit(1);
+	}
+	char *item;
+	item = strdup(p_st->s[++p_st->front]);
+	return (item);
+}
 
 char result[20];
 char Tflag[20] = "";
@@ -96,13 +121,29 @@ int check(char *token) {
     i++;
 
   if (i == TABLE_SIZE)
-    return 1;
+    return -1;
+  else
+    return index1 + i;
+}
+
+int check_parent_scopes(char *token) {
+  int index1 = hash1(token);
+  int i = 0;
+  while (i < TABLE_SIZE &&
+         !(strcmp(hashTable[(index1 + i) % TABLE_SIZE].name, token) == 0 &&
+				 (hashTable[(index1 + i) % TABLE_SIZE].scope_depth == scope_depth &&
+				 hashTable[(index1 + i) % TABLE_SIZE].scope_id == scope_id) ||
+				 hashTable[(index1 + i) % TABLE_SIZE].scope_depth < scope_depth))
+    i++;
+
+  if (i == TABLE_SIZE)
+    return -1;
   else
     return index1 + i;
 }
 
 void insert(char type, char *token, char *dtype, char *value, int scope_depth, int scope_id) {
-  if (check(token) != 1) {
+  if (check(token) != -1) {
     yyerror("variable is redeclared");
 		exit(1);
   }
@@ -173,9 +214,10 @@ int restore_id(int scope_depth) {
 }
 
 void update(char *token, char *dtype, char *value) {
-  int index = check(token);
-  if (index == 1) {
+  int index = check_parent_scopes(token);
+  if (index == -1) {
 		char error[100];
+		printf("In here\n");
 		sprintf(error, "%s is not defined", token);
     yyerror(error);
     exit(1);
@@ -218,6 +260,7 @@ void doAssign(char decltype, Node *lhs, Node *rhs) {
 	} else {
 		if (seqLen(rhs) == 0){
 			insert(decltype, pop(&stack_i), Tflag, "NULL", scope_depth, scope_id);
+			doAssign(decltype, lhs->rop, rhs);
 		} else {
 			if (Tflag[0] != 0) {
 				if (strcmp(pop(&stack_t),Tflag) != 0) {
@@ -230,8 +273,63 @@ void doAssign(char decltype, Node *lhs, Node *rhs) {
 			}
 		}
 		fprintf(icfile, "%s = %s\n", lhs->lop->value.name, rhs->lop->loc);
+		doAssign(decltype, lhs->rop, rhs->rop);
 	} 
-	doAssign(decltype, lhs->rop, rhs->rop);
+}
+
+void doAssignExisting(Node *lhs, Node *rhs) {	
+	if (lhs==NULL && rhs==NULL) {
+		return;
+	}
+	if (seqLen(lhs) != seqLen(rhs)) {
+		yyerror("Imbalanced assignment");
+		exit(1);
+	} else {
+		char* res = search(lhs->lop->value.name);
+		if (res==NULL) {
+			char error[100];
+			sprintf(error, "%s is not defined", lhs->lop->value.name);
+			yyerror(error);
+			exit(1);
+		}
+		strcpy(result, res);
+
+		Node *cur = rhs->lop;
+		while(cur->type == OP) {
+			cur = cur->lop;
+		}
+		int type = cur->type;
+		union NodeVal value = cur->value;
+		if(cur->type == ID) {
+			char *decltype = search(cur->value.name);
+			if(decltype==NULL) {
+				char error[100];
+				sprintf(error, "%s is not defined", lhs->lop->value.name);
+				yyerror(error);
+				exit(1);
+			}
+		}
+		printf("%s %d\n", result, type);
+		if(strcmp(result, "int") == 0 && type == INT) {
+			sprintf(result, "%d", value.i);
+			update(lhs->lop->value.name, "int", result);
+		} else if(strcmp(result, "float") == 0 && type == FLOAT) {
+			sprintf(result, "%f", value.f);
+			update(lhs->lop->value.name, "float", result);
+		} else if(strcmp(result, "string") == 0 && type == STRING) {
+			update(lhs->lop->value.name, "string", value.str);
+		} else if(strcmp(result, "rune") == 0 && type == RUNE) {
+			update(lhs->lop->value.name, "rune", value.str);
+		} else if(strcmp(result, "bool") == 0 && type == BOOL) {
+			sprintf(result, "%dB", value.b);
+			update(lhs->lop->value.name, "bool", result);
+		} else {
+			yyerror("Error: type mismatched assignment");
+			exit(1);
+		}
+		fprintf(icfile, "%s = %s\n", lhs->lop->value.name, rhs->lop->loc);
+	}
+	doAssignExisting(lhs->rop, rhs->rop);
 }
 
 %}
@@ -243,9 +341,7 @@ void doAssign(char decltype, Node *lhs, Node *rhs) {
 /* %expect 11 */
 
 %type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName CIdentifierListSuff ConstSpec
-%type <IfNode *> IfStmt OptionalElse
-
-
+%type <IfNode *> IfStmt OptionalElse ForStmt
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -658,6 +754,9 @@ VarSpec :
 					} 
 					else {
 						$$ = NULL;
+						printf("Beginning with assign\n");
+						doAssign('v', $1, $2);
+						printf("Done with assign\n");
 					}
 				}
 ;
@@ -711,18 +810,28 @@ ExprList :
 				{	
 					$$ = makeNode(SEQ, value, $1, NULL); 
 				 			
-    				if ($1->type == INT) {
-    					sprintf(result, "%d", $1->value.i);
-    					push(&stack_t, "int");
-    				}
-    				if ($1->type == FLOAT) {
-    					sprintf(result, "%f", $1->value.f);
-    					push(&stack_t, "float");
-    				}
-    				if ($1->type == STRING) {
-    					strcpy(result, $1->value.str);
-    					push(&stack_t, "string");
-    				}
+					switch ($1->type) {
+						case INT:
+							sprintf(result, "%d", $1->value.i);
+							push(&stack_t, "int");
+							break;
+						case FLOAT:
+							sprintf(result, "%f", $1->value.f);
+							push(&stack_t, "float");
+							break;
+						case RUNE:
+							sprintf(result, "%s", $1->value.str);
+							push(&stack_t, "rune");
+							break;
+						case STRING:
+							sprintf(result, "%s", $1->value.str);
+							push(&stack_t, "string");
+							break;
+						case BOOL:
+							sprintf(result, "%dB", $1->value.b);
+							push(&stack_t, "bool");
+							break;
+						}
     							
     				push(&stack_v, result);
     				
@@ -731,19 +840,28 @@ ExprList :
 				 { 
 					$$ = makeNode(SEQ, value, $3, $1);
 
-				 	
-    				if ($3->type == INT) {
-    					sprintf(result, "%d", $3->value.i);
-    					push(&stack_t, "int");
-    				}
-    				if ($3->type == FLOAT) {
-    					sprintf(result, "%f", $3->value.f);
-    					push(&stack_t, "float");
-    				}
-    				if ($3->type == STRING) {
-    					strcpy(result, $3->value.str);
-    					push(&stack_t, "string");
-    				}
+					switch ($3->type) {
+						case INT:
+							sprintf(result, "%d", $1->value.i);
+							push(&stack_t, "int");
+							break;
+						case FLOAT:
+							sprintf(result, "%f", $1->value.f);
+							push(&stack_t, "float");
+							break;
+						case RUNE:
+							sprintf(result, "%s", $1->value.str);
+							push(&stack_t, "rune");
+							break;
+						case STRING:
+							sprintf(result, "%s", $1->value.str);
+							push(&stack_t, "string");
+							break;
+						case BOOL:
+							sprintf(result, "%dB", $1->value.b);
+							push(&stack_t, "bool");
+							break;
+						}
     						
     				push(&stack_v, result);
     			
@@ -1023,41 +1141,12 @@ IncDecStmt :
 ;
 
 Assignment :
-					 ExprList '=' ExprList
-					 {	
-					 	printf("started\n"); 
-					 	value.op[0] = '='; 
-					 	value.op[1] = 0; 
-					 	printf("Operator: %s\n", value.op); 
-					 	$$ = makeNode(OP, value, $1, $3);
-						char* res = search($1->value.name);
-						if (res==NULL) {
-							char error[100];
-							sprintf(error, "%s is not defined", $1->value.name);
-							yyerror(error);
-							YYERROR;
-						}
-						strcpy(result, search($1->value.name));
-
-						printf("%s %d\n", result, $3->type);
-						if(strcmp(result, "int") == 0 && $3->type == INT) {
-							sprintf(result, "%d", $3->value.i);
-					 		update($1->value.name, "int", result);
-						}
-
-					 	else if(strcmp(result, "float") == 0 && $3->type == FLOAT) {
-					 		sprintf(result, "%f", $3->value.f);
-					 		update($1->value.name, "int", result);
-					 	}	
-
-					 	else if(strcmp(result, "string") == 0 && $3->type == STRING)
-					 		update($1->value.name, "int", $3->value.str);
-
-					 	else {
-					 		yyerror("Error: type mismatched assignment");
-					 		YYERROR;
-					 	}
-
+					 IdentifierList '=' ExprList
+					 {
+						value.op[0] = '='; 
+						value.op[1] = 0; 
+						$$ = makeNode(OP, value, $1, $3);
+						doAssignExisting($1, $3);
 					 }
 					 | Expr assign_op Expr
 					 {	
@@ -1066,26 +1155,35 @@ Assignment :
 					 }
 ;
 
-ShortVarDecl : IdentifierList O_ASSGN ExprList
+ShortVarDecl :
+					IdentifierList O_ASSGN ExprList
 					{
 						doAssign('v', $1, $3);
 					}
 ;
 
-ForStmt : K_FOR
-				OptionalForClause
-				Block
+ForStmt :
+				K_FOR {newlabel(); add(&for_loc, label); strcpy($<IfNode>$.next, label); newlabel(); add(&for_loc, label);} OptionalForClause {strcpy($<IfNode>$.next, label);} Block
+				{
+					
+					fprintf(icfile, "GOTO %s\n", $<IfNode>2.next);
+					fprintf(icfile, "%s:\n", $<IfNode>4.next);
+				}
 ;
 OptionalForClause : 
 									Condition %prec NORMAL
 									| ForClause %prec NORMAL
 									| RangeClause %prec NORMAL
 									| %empty %prec EMPTY
+;
 Condition : 
 					Expr
+					{
+						fprintf(icfile, "IFFALSE %s GOTO %s\n", $1->loc, rem(&for_loc));
+					}
 ;
 ForClause :
-					OptionalForClauseInit ';' OptionalForClauseCondition ';' OptionalForClausePost
+					OptionalForClauseInit {fprintf(icfile, "%s:\n", rem(&for_loc));} ';' OptionalForClauseCondition ';' OptionalForClausePost
 ;
 OptionalForClauseInit :
 											InitStmt %prec NORMAL

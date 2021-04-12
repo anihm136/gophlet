@@ -37,7 +37,6 @@ typedef struct node {
 
 typedef struct ifnode {
 	char next[10];
-	char cond[100];
 } IfNode;
 
 Node *makeNode(int type, union NodeVal value, Node* lop, Node* rop);
