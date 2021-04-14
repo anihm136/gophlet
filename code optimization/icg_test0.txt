@@ -1,0 +1,7 @@
+a = x ** 2
+b = 3
+c = x
+d = c * c
+e = b * 2
+f = a + d
+g = e * f
