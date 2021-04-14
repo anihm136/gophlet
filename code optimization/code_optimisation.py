@@ -1,16 +1,29 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[135]:
-
-
 import re
 '''
+
 Expected o/p:
-    icg_test0:
+
+    icg_test0:    
         a = x * x
         f = a + a
         g = b * f
+        
+    icg_test1:
+        p = a + c
+        r = b * b
+        
+    icg_test2:
+        T6 = 4 * i
+        x = a[T6]
+        T8 = 4 * j
+        T9 = a[T8]
+        a[T6] = T9
+        a[T8] = x
+        goto B2
+
 
 '''
 
@@ -265,19 +278,44 @@ def copy_propagation(list_of_lines, comp=[]):
         line = line.strip('\n')
         tokens = line.split(' ')
         
-        if( len(tokens) == 3 and (tokens[2] not in temp) and            (is_id(tokens[2]) or is_temp(tokens[2]))):
+        if( len(tokens) == 3 ):
+            if (tokens[2] not in temp) and (is_id(tokens[2]) or is_temp(tokens[2])):
                         
-            temp[tokens[0]] = tokens[2]
-            final_list.append(line)
+                temp[tokens[0]] = tokens[2]
+                new_line = line
         
-        elif( len(tokens) == 3 and (tokens[2] in temp) ):
+            elif( tokens[2] in temp ):
             
-            tokens[2] = temp[tokens[2]]
-            new_line = ' '.join(new_line)
+                tokens[2] = temp[tokens[2]]
+#                 new_line = ' '.join(tokens)
+#                 final_list.append(new_line)
+                
+                temp[tokens[0]] = temp[tokens[2]]
+                
+            if( '[' in tokens[2] ):
+                
+                t = tokens[2]
+                t = t.split('[')[1]
+                t = t.split(']')[0]
+                
+                if( t in temp ):
+                    tokens[2] = tokens[2].replace(t, temp[t])
+#                 new_line = ' '.join(tokens)
+#                 final_list.append(new_line)
+                
+            if( '[' in tokens[0] ):
+                t = tokens[0]
+                t = t.split('[')[1]
+                t = t.split(']')[0]
+                
+                if( t in temp ):
+                    tokens[0] = tokens[0].replace(t, temp[t])
+#                 new_line = ' '.join(tokens)
+#                 final_list.append(new_line)
+            new_line = ' '.join(tokens)
             final_list.append(new_line)
-            
-            temp[tokens[0]] = temp[tokens[2]]
-
+                
+        
         elif( len(tokens) == 5 ):
             
             if( tokens[2] in temp ):                
@@ -292,8 +330,8 @@ def copy_propagation(list_of_lines, comp=[]):
             new_line = ' '.join(tokens)
             final_list.append(new_line)
             
-        else:
-            
+
+        else:    
             final_list.append(line)
     
     if( final_list == comp ):
@@ -471,22 +509,12 @@ if( __name__ == '__main__'):
     cse_list, flagcp = common_subexpr_elimination(cp_list)
     print('-'*12,'Common Sub-expression Elimination Done', '-'*12)
     printICG(cse_list)
-    
+       
     dce_list = dead_code_elimination(cse_list)
     print('-'*19,'Dead Code Elimination Done', '-'*19)
     printICG(dce_list)
     
     
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
 
 
 
