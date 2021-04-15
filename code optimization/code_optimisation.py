@@ -2,8 +2,8 @@
 # coding: utf-8
 
 import re
-'''
 
+'''
 Expected o/p:
 
     icg_test0:    
@@ -279,7 +279,7 @@ def copy_propagation(list_of_lines, comp=[]):
         tokens = line.split(' ')
         
         if( len(tokens) == 3 ):
-            if (tokens[2] not in temp) and (is_id(tokens[2]) or is_temp(tokens[2])):
+            if (tokens[2] not in temp) and                (is_id(tokens[2]) or is_temp(tokens[2])):
                         
                 temp[tokens[0]] = tokens[2]
                 new_line = line
@@ -446,7 +446,7 @@ def var_assign_check(list_of_lines, token, line_no):
     else:
              
         if( match1 == 'none'):
-            return 1
+            return 0
              
         else:
             
@@ -469,6 +469,10 @@ def dead_code_elimination(list_of_lines):
         tokens = line.split()
         if( len(tokens) == 3 and tokens[1] == '=' and (is_num(tokens[2]) or is_bool(tokens[2])) ):
             pass
+        
+        elif( len(tokens) == 3 and re.match('[a-zA-z]\w*\[[a-zA-Z]\w*\]', tokens[0]) ):
+            final_list.append(line)
+            
         elif( len(tokens) == 3 and tokens[1] == '=' ):
             
             flag = var_assign_check(list_of_lines, tokens[0], i)
@@ -478,6 +482,7 @@ def dead_code_elimination(list_of_lines):
                 final_list.append(line)
         else:
             final_list.append(line)
+            
     final_list.append(list_of_lines[-1])
     
     return final_list
@@ -509,12 +514,14 @@ if( __name__ == '__main__'):
     cse_list, flagcp = common_subexpr_elimination(cp_list)
     print('-'*12,'Common Sub-expression Elimination Done', '-'*12)
     printICG(cse_list)
-       
+    
+    cse_list, flagcp = copy_propagation(cse_list)
+    print('-'*20,'Copy Propagation Done', '-'*20)
+    printICG(cse_list)
+    
     dce_list = dead_code_elimination(cse_list)
     print('-'*19,'Dead Code Elimination Done', '-'*19)
     printICG(dce_list)
     
     
-
-
 
