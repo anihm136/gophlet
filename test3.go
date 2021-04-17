@@ -10,7 +10,7 @@ func main() {
 	a = 1 + 2 * 3 / 4
 	var b bool = true
 	// b = true || false
-	for c:=1;c<10; {
+	for c:=1;c<10;c++ {
 		a = 4 + 1
 		c=3+1
 	}

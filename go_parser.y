@@ -341,7 +341,6 @@ void doAssignExisting(Node *lhs, Node *rhs) {
 /* %expect 11 */
 
 %type <Node *> IdentifierList ExprList Expr Literal BasicLit Operand OperandName rel_op add_op mul_op UnaryExpr PrimaryExpr assign_op unary_op PackageName QualifiedID Assignment VarSpec VIdentifierListSuff VIdentifierListTypeSuff Type TypeName CIdentifierListSuff ConstSpec
-%type <IfNode *> IfStmt OptionalElse ForStmt
 
 %token <char const *> T_ID "identifier"
 %token <int> L_INT "integer literal"
@@ -1137,7 +1136,13 @@ ExprStmt :
 
 IncDecStmt :
 					 Expr O_INC
+					 {
+						newtemp(); fprintf(icfile, "%s = %s + 1\n", temp, $1->loc), fprintf(icfile, "%s = %s\n", $1->loc, temp);
+					 }
 					 | Expr O_DEC
+					 {
+						newtemp(); fprintf(icfile, "%s = %s - 1\n", temp, $1->loc), fprintf(icfile, "%s = %s\n", $1->loc, temp);
+					 }
 ;
 
 Assignment :
@@ -1163,11 +1168,10 @@ ShortVarDecl :
 ;
 
 ForStmt :
-				K_FOR {newlabel(); add(&for_loc, label); strcpy($<IfNode>$.next, label); newlabel(); add(&for_loc, label);} OptionalForClause {strcpy($<IfNode>$.next, label);} Block
+				K_FOR {newlabel(); add(&for_loc, label); newlabel(); add(&for_loc, label); strcpy($<IfNode>$.next, label);} OptionalForClause {strcpy($<IfNode>$.next, label);} Block
 				{
-					
-					fprintf(icfile, "GOTO %s\n", $<IfNode>2.next);
-					fprintf(icfile, "%s:\n", $<IfNode>4.next);
+					fprintf(icfile, "GOTO %s\n", label);
+					fprintf(icfile, "%s:\n", $<IfNode>2.next);
 				}
 ;
 OptionalForClause : 
@@ -1183,7 +1187,7 @@ Condition :
 					}
 ;
 ForClause :
-					OptionalForClauseInit {fprintf(icfile, "%s:\n", rem(&for_loc));} ';' OptionalForClauseCondition ';' OptionalForClausePost
+					OptionalForClauseInit {strcpy($<IfNode>$.next, rem(&for_loc)); fprintf(icfile, "%s:\n", $<IfNode>$.next); } ';' OptionalForClauseCondition {newlabel();fprintf(icfile, "GOTO %s\n", label); add(&for_loc, label);} ';' {newlabel(); fprintf(icfile, "%s:\n", label);} OptionalForClausePost {fprintf(icfile, "GOTO %s\n", $<IfNode>2.next); fprintf(icfile, "%s:\n", rem(&for_loc));}
 ;
 OptionalForClauseInit :
 											InitStmt %prec NORMAL
