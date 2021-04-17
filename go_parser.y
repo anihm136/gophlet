@@ -238,13 +238,13 @@ void update(char *token, char *dtype, char *value) {
 
 void disp_symtbl() {
   int base = 1000;
-  printf("%s\t%s\t\t%s\t\t%s\t\t%s\t\t%s\n", "Name", "Type", "Data Type", "Value",
+  printf("%s\t\t%s\t\t%s\t\t%s\t\t%s\n", "Name", "Data Type", "Value",
          "Scope Depth", "Scope ID");
 
   for (int i = 0; i < TABLE_SIZE; i++) {
     if (hashTable[i].hcode != -1)
-      printf("%s\t%c\t\t%s\t\t\t%s\t\t%d\t\t%d\n", hashTable[i].name,
-             hashTable[i].type, hashTable[i].dtype, hashTable[i].value,
+      printf("%s\t\t%s\t\t\t%s\t\t%d\t\t%d\n", hashTable[i].name,
+             hashTable[i].dtype, hashTable[i].value,
              hashTable[i].scope_depth, hashTable[i].scope_id);
   }
 }
