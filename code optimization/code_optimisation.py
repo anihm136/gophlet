@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import re
-
 '''
 Expected o/p:
 
@@ -355,7 +354,8 @@ def next_subexpr(list_of_lines, line, line_no):
         line = line.strip('\n')
         if( re.search(expr, line) ):
             subexpr_list.append(i)
-    match1 = 'none'     
+       
+    
     for line in list_of_lines[line_no + 1: ]:
         
         line = line.strip('\n')
@@ -367,11 +367,51 @@ def next_subexpr(list_of_lines, line, line_no):
         else:
             match1 = 'none'
             
+    t = expr.split(' ')
+    
+    for line in list_of_lines[line_no + 1: ]:
+        
+        line = line.strip('\n')
+        tokens = line.split()        
+        if(t[0] in tokens[0] and tokens[1] == '='):
+            match2 = line + '\n'
+            break
+            
+        else:
+            match2 = 'none'
+    for line in list_of_lines[line_no + 1: ]:
+        
+        line = line.strip('\n')
+        tokens = line.split()        
+        if(t[2] in tokens[0] and tokens[1] == '='):
+            match3 = line + '\n'
+            break
+            
+        else:
+            match3 = 'none'
+            
+    
     if( match1 == 'none' ):
-        return subexpr_list, len(list_of_lines)
+        i1 =  len(list_of_lines)
     else:
         i1 = list_of_lines[line_no+1: ].index(match1)
+    
+    if( match2 == 'none' ):
+        i2 =  len(list_of_lines)
+    else:
+        i2 = list_of_lines[line_no+1: ].index(match2)
+    
+    if( match3 == 'none' ):
+        i3 =  len(list_of_lines)
+    else:
+        i3 = list_of_lines[line_no+1: ].index(match3)
+    
+    if( i1 <= i2 and i1 <= i3):
         return subexpr_list, i1
+    elif( i2 <= i1 and i2 <= i3):
+        return subexpr_list, i2
+    else:
+        return subexpr_list, i3
     
     
 def common_subexpr_elimination(list_of_lines, comp=[]):
@@ -382,7 +422,7 @@ def common_subexpr_elimination(list_of_lines, comp=[]):
         line = line.strip('\n')
         tokens = line.split(' ')
         
-        if( len(tokens) == 5):
+        if( len(tokens) == 5 ):
             expr = line.split(' = ')
             cmn_exprList, index = next_subexpr(list_of_lines, expr, i)
             for j in cmn_exprList:
@@ -429,9 +469,6 @@ def var_assign_check(list_of_lines, token, line_no):
             match2 = line + '\n'
             break
         
-        elif( len(tokens) == 4 ):     #for condtitonal jumps
-            match2 = 'none'
-            pass
         
         elif( len(tokens) == 5 and ( token == tokens[2] or token == tokens[4]) ):
             match2 = line + '\n'
@@ -514,14 +551,8 @@ if( __name__ == '__main__'):
     cse_list, flagcp = common_subexpr_elimination(cp_list)
     print('-'*12,'Common Sub-expression Elimination Done', '-'*12)
     printICG(cse_list)
-    
-    cse_list, flagcp = copy_propagation(cse_list)
-    print('-'*20,'Copy Propagation Done', '-'*20)
-    printICG(cse_list)
-    
+
     dce_list = dead_code_elimination(cse_list)
     print('-'*19,'Dead Code Elimination Done', '-'*19)
     printICG(dce_list)
     
-    
-
